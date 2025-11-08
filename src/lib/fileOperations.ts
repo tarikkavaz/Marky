@@ -1,6 +1,8 @@
 import { open, save } from '@tauri-apps/plugin-dialog';
 import { readTextFile, writeTextFile } from '@tauri-apps/plugin-fs';
+import { dirname } from '@tauri-apps/api/path';
 import TurndownService from 'turndown';
+import { imageUrlToMarkdownPath, markdownPathToImageUrl } from './imageHandler';
 
 export interface FileState {
   path: string | null;
@@ -23,6 +25,12 @@ const turndownService = new TurndownService({
   },
 });
 
+// Prevent escaping of square brackets in image/link paths
+turndownService.escape = (text) => {
+  // Don't escape anything - keep the original text
+  return text;
+};
+
 // Add custom rule for TipTap's code blocks
 turndownService.addRule('codeBlock', {
   filter: (node) => {
@@ -36,12 +44,16 @@ turndownService.addRule('codeBlock', {
 });
 
 // Convert Markdown to HTML for editor
-function markdownToHTML(markdown: string): string {
-  const html = markdown
+async function markdownToHTML(markdown: string, markdownPath: string | null): Promise<string> {
+  let html = markdown
     // Headers
     .replace(/^### (.+)$/gm, '<h3>$1</h3>')
     .replace(/^## (.+)$/gm, '<h2>$1</h2>')
     .replace(/^# (.+)$/gm, '<h1>$1</h1>')
+    // Images (must come before bold/italic to avoid conflicts with ![alt])
+    .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1">')
+    // Links
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>')
     // Bold and italic
     .replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>')
     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
@@ -57,13 +69,17 @@ function markdownToHTML(markdown: string): string {
     // Paragraphs - split by double newlines
     .split('\n\n')
     .map(para => {
-      // Skip already processed block elements
-      if (para.match(/^<(h\d|ul|pre|table)/)) {
+      // Skip already processed block elements and images
+      if (para.match(/^<(h\d|ul|pre|table|img)/)) {
         return para;
       }
       // Skip empty paragraphs
       if (para.trim() === '') {
         return '';
+      }
+      // Skip paragraphs that contain images
+      if (para.includes('<img')) {
+        return para;
       }
       // Handle line breaks within paragraphs (two spaces + newline in markdown)
       const processedPara = para
@@ -74,14 +90,83 @@ function markdownToHTML(markdown: string): string {
     .filter(para => para !== '')  // Remove empty strings
     .join('\n\n');  // Join with double newlines to separate paragraphs
 
+  // Convert image paths to Tauri asset URLs AFTER paragraph processing
+  if (markdownPath) {
+    html = await convertImagePathsToUrls(html, markdownPath);
+  }
+
   return html;
 }
 
+// Helper function to convert image paths to base64 data URLs while preserving original path
+async function convertImagePathsToUrls(html: string, _markdownPath: string): Promise<string> {
+  const imgRegex = /<img([^>]*?)src="([^"]+)"([^>]*?)>/g;
+  const matches = [...html.matchAll(imgRegex)];
+  
+  let result = html;
+  for (const match of matches) {
+    const [fullMatch, before, src, after] = match;
+    
+    // Skip if already has data-original-src (already processed)
+    if (fullMatch.includes('data-original-src')) {
+      continue;
+    }
+    
+    // Skip if already a data URL
+    if (src.startsWith('data:')) {
+      continue;
+    }
+    
+    // Convert to base64 data URL but preserve original path in data attribute
+    try {
+      const { readFile } = await import('@tauri-apps/plugin-fs');
+      const imageData = await readFile(src);
+      
+      // Detect image type from extension
+      const ext = src.split('.').pop()?.toLowerCase() || 'png';
+      const mimeType = ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg' : `image/${ext}`;
+      
+      // Convert to base64
+      const base64 = btoa(String.fromCharCode(...imageData));
+      const dataUrl = `data:${mimeType};base64,${base64}`;
+      
+      // Store original path in data-original-src attribute
+      result = result.replace(fullMatch, `<img${before}src="${dataUrl}" data-original-src="${src}"${after}>`);
+    } catch (error) {
+      console.error(`Failed to load image ${src}:`, error);
+      // Keep original if conversion fails
+    }
+  }
+  
+  return result;
+}
+
 // Convert HTML to Markdown for saving
-function htmlToMarkdown(html: string): string {
+async function htmlToMarkdown(html: string, markdownPath: string | null): Promise<string> {
   try {
+    // Restore original file paths from data-original-src attribute
+    let processedHtml = html;
+    if (markdownPath) {
+      const markdownDir = await dirname(markdownPath);
+      // Find all img tags with src
+      processedHtml = html.replace(/<img([^>]*?)src="([^"]+)"([^>]*?)>/g, (match, before, src, after) => {
+        // Check if data-original-src attribute exists
+        const dataOriginalMatch = match.match(/data-original-src="([^"]+)"/);
+        const originalSrc = dataOriginalMatch ? dataOriginalMatch[1] : src;
+        
+        // Use the original path if available, otherwise try to convert the src
+        const absolutePath = dataOriginalMatch ? originalSrc : imageUrlToMarkdownPath(src, markdownDir);
+        
+        // Remove data-original-src from the output
+        const cleanedBefore = before.replace(/\s*data-original-src="[^"]*"/, '');
+        const cleanedAfter = after.replace(/\s*data-original-src="[^"]*"/, '');
+        
+        return `<img${cleanedBefore}src="${absolutePath}"${cleanedAfter}>`;
+      });
+    }
+    
     // Clean up TipTap's HTML structure
-    const cleanedHtml = html
+    const cleanedHtml = processedHtml
       .replace(/<p><\/p>/g, '\n\n') // Empty paragraphs to double newlines
       .replace(/<br\s*\/?>/g, '  \n'); // BR tags to markdown line breaks (two spaces + newline)
     
@@ -117,7 +202,8 @@ export async function openFile(): Promise<{ path: string; content: string } | nu
 
     const markdownContent = await readTextFile(filePath);
     // Convert Markdown to HTML for the editor
-    const htmlContent = markdownToHTML(markdownContent);
+    const htmlContent = await markdownToHTML(markdownContent, filePath);
+    
     return { path: filePath, content: htmlContent };
   } catch (error) {
     console.error('Error opening file:', error);
@@ -145,7 +231,7 @@ export async function saveFile(content: string, currentPath: string | null): Pro
     }
 
     // Convert HTML to Markdown before saving
-    const markdownContent = htmlToMarkdown(content);
+    const markdownContent = await htmlToMarkdown(content, filePath);
     await writeTextFile(filePath, markdownContent);
     return filePath;
   } catch (error) {
@@ -170,7 +256,7 @@ export async function saveFileAs(content: string): Promise<string | null> {
     }
 
     // Convert HTML to Markdown before saving
-    const markdownContent = htmlToMarkdown(content);
+    const markdownContent = await htmlToMarkdown(content, filePath);
     await writeTextFile(filePath, markdownContent);
     return filePath;
   } catch (error) {

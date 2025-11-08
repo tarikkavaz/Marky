@@ -52,7 +52,7 @@ const TabHandler = Extension.create({
           }
         }
         
-        return false;
+      return false;
       },
     };
   },
@@ -62,6 +62,7 @@ interface EditorProps {
   content: string;
   onChange: (content: string) => void;
   onEditorReady?: (editor: TipTapEditor) => void;
+  currentFilePath?: string | null;
 }
 
 // Create extensions outside component to prevent recreation during HMR
@@ -87,7 +88,7 @@ const editorExtensions = [
             // Insert 2 spaces
             return this.editor.commands.insertContent('  ');
           }
-          return false;
+              return false;
         },
         'Shift-Tab': () => {
           // Only handle Shift+Tab in code blocks
@@ -112,8 +113,8 @@ const editorExtensions = [
               return this.editor.commands.deleteRange({ from, to });
             }
             return true;
-          }
-          return false;
+        }
+        return false;
         },
       };
     },
@@ -122,7 +123,31 @@ const editorExtensions = [
   }),
   Typography,
   Underline,
-  Image,
+  Image.extend({
+    addAttributes() {
+      return {
+        ...this.parent?.(),
+        'data-original-src': {
+          default: null,
+          parseHTML: element => element.getAttribute('data-original-src'),
+          renderHTML: attributes => {
+            if (!attributes['data-original-src']) {
+              return {};
+            }
+            return {
+              'data-original-src': attributes['data-original-src'],
+            };
+          },
+        },
+      };
+    },
+  }).configure({
+    allowBase64: true,
+    inline: false,
+    HTMLAttributes: {
+      class: 'max-w-full h-auto rounded',
+    },
+  }),
   Link.configure({
     openOnClick: false,
     HTMLAttributes: {
@@ -140,7 +165,7 @@ const editorExtensions = [
   }),
 ];
 
-export function Editor({ content, onChange, onEditorReady }: EditorProps) {
+export function Editor({ content, onChange, onEditorReady, currentFilePath }: EditorProps) {
   const isUpdatingRef = useRef(false);
   const lastContentRef = useRef(content);
 
@@ -235,7 +260,7 @@ export function Editor({ content, onChange, onEditorReady }: EditorProps) {
 
   return (
     <div className="w-full h-full overflow-hidden">
-      <EditorContextMenu editor={editor}>
+      <EditorContextMenu editor={editor} currentFilePath={currentFilePath}>
         <EditorContent editor={editor} className="w-full h-full overflow-y-auto" />
       </EditorContextMenu>
     </div>

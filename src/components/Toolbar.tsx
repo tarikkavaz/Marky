@@ -20,13 +20,14 @@ import {
 import { InputDialog } from './InputDialog';
 import { useState, useEffect } from 'react';
 import { open, message } from '@tauri-apps/plugin-dialog';
-import { readFile } from '@tauri-apps/plugin-fs';
+import { saveImageForMarkdown } from '../lib/imageHandler';
 
 interface ToolbarProps {
   editor: Editor | null;
+  currentFilePath: string | null;
 }
 
-export function Toolbar({ editor }: ToolbarProps) {
+export function Toolbar({ editor, currentFilePath }: ToolbarProps) {
   const [linkDialogOpen, setLinkDialogOpen] = useState(false);
   const [tableRowsDialogOpen, setTableRowsDialogOpen] = useState(false);
   const [tableColsDialogOpen, setTableColsDialogOpen] = useState(false);
@@ -85,21 +86,30 @@ export function Toolbar({ editor }: ToolbarProps) {
       });
       
       if (filePath && typeof filePath === 'string') {
-        // Read the file as bytes and convert to base64
-        const fileData = await readFile(filePath);
-        const base64 = btoa(String.fromCharCode(...fileData));
+        // Read the image and convert to base64 for display
+        const { readFile } = await import('@tauri-apps/plugin-fs');
+        const imageData = await readFile(filePath);
         
-        // Determine the file extension for the MIME type
+        // Detect image type from extension
         const ext = filePath.split('.').pop()?.toLowerCase() || 'png';
-        const mimeType = ext === 'svg' ? 'image/svg+xml' : `image/${ext}`;
+        const mimeType = ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg' : `image/${ext}`;
         
-        // Create data URL
+        // Convert to base64
+        const base64 = btoa(String.fromCharCode(...imageData));
         const dataUrl = `data:${mimeType};base64,${base64}`;
         
-        editor.chain().focus().setImage({ src: dataUrl }).run();
+        // Insert image with base64 src and original path in data-original-src
+        editor.chain().focus().setImage({ 
+          src: dataUrl,
+          'data-original-src': filePath
+        }).run();
       }
     } catch (error) {
       console.error('Failed to insert image:', error);
+      await message('Failed to insert image. Please try again.', {
+        title: 'Error',
+        kind: 'error'
+      });
     }
   };
 

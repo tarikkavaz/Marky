@@ -195,7 +195,7 @@ function App() {
         </header>
 
         {/* Toolbar */}
-        {showToolbar && <Toolbar editor={editor} />}
+        {showToolbar && <Toolbar editor={editor} currentFilePath={fileState.path} />}
 
         {/* Editor area */}
         <main className="flex-1 overflow-hidden bg-background/70">
@@ -203,6 +203,7 @@ function App() {
             content={fileState.content}
             onChange={handleContentChange}
             onEditorReady={setEditor}
+            currentFilePath={fileState.path}
           />
         </main>
       </div>
