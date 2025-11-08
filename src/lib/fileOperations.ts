@@ -27,14 +27,7 @@ const turndownService = new TurndownService({
 });
 
 // Use GFM tables plugin for markdown table conversion
-console.log('tables plugin:', tables);
 turndownService.use(tables);
-
-// Test the table conversion
-const testTable = '<table><tr><th>A</th><th>B</th></tr><tr><td>1</td><td>2</td></tr></table>';
-const testResult = turndownService.turndown(testTable);
-console.log('Table plugin test:', testResult.includes('|') ? 'WORKING' : 'FAILED');
-console.log('Test result:', testResult);
 
 // Prevent escaping of square brackets in image/link paths
 turndownService.escape = (text) => {
@@ -195,9 +188,6 @@ async function convertImagePathsToUrls(html: string, _markdownPath: string): Pro
 // Convert HTML to Markdown for saving
 async function htmlToMarkdown(html: string, markdownPath: string | null): Promise<string> {
   try {
-    console.log('=== SAVING - htmlToMarkdown ===');
-    console.log('Has table tags:', html.includes('<table'));
-    
     // Restore original file paths from data-original-src attribute
     let processedHtml = html;
     if (markdownPath) {
@@ -217,14 +207,6 @@ async function htmlToMarkdown(html: string, markdownPath: string | null): Promis
         
         return `<img${cleanedBefore}src="${absolutePath}"${cleanedAfter}>`;
       });
-    }
-    
-    // Log table HTML if present
-    if (processedHtml.includes('<table')) {
-      const tableMatch = processedHtml.match(/<table[\s\S]*?<\/table>/);
-      if (tableMatch) {
-        console.log('Table HTML (first 500 chars):', tableMatch[0].substring(0, 500));
-      }
     }
     
     // Clean up TipTap's HTML structure
@@ -249,36 +231,13 @@ async function htmlToMarkdown(html: string, markdownPath: string | null): Promis
         .replace(/<\/?tfoot>/g, '');
     }
     
-    // Log cleaned table HTML
-    if (cleanedHtml.includes('<table')) {
-      const tableMatch = cleanedHtml.match(/<table[\s\S]*?<\/table>/);
-      if (tableMatch) {
-        console.log('Cleaned table HTML (first 500 chars):', tableMatch[0].substring(0, 500));
-      }
-    }
-    
     const markdown = turndownService.turndown(cleanedHtml);
-    
-    console.log('Markdown has table syntax (|):', markdown.includes('|'));
-    console.log('Markdown has <table> tags:', markdown.includes('<table'));
-    
-    if (markdown.includes('|')) {
-      const lines = markdown.split('\n');
-      const tableLines = lines.filter(line => line.includes('|'));
-      console.log('Table lines in markdown:', tableLines.slice(0, 5));
-    } else if (markdown.includes('<table')) {
-      console.log('ERROR: Table was NOT converted to markdown, still HTML');
-      console.log('First 300 chars of markdown:', markdown.substring(0, 300));
-    }
     
     // Clean up excessive whitespace while preserving paragraph breaks
     const finalMarkdown = markdown
       .replace(/\n{4,}/g, '\n\n') // More than 3 newlines to double newlines
       .replace(/[ \t]+$/gm, '') // Remove trailing spaces from lines
       .trim();
-    
-    console.log('Final markdown has table syntax:', finalMarkdown.includes('|'));
-    console.log('=================================');
     
     return finalMarkdown;
   } catch (error) {
