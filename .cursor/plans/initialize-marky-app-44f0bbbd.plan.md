@@ -105,6 +105,7 @@
 - Detect and prevent opening same file in multiple windows
 - Add "New Window" command (empty editor)
 - Implement Cmd+N keyboard shortcut for new window
+- Implement Cmd+W keyboard shortcut for close window (askes for save if file is unsaved)
 - Add filename to window title (show "Untitled" if no file)
 - Implement window session restoration (reopen files on app restart)
 
