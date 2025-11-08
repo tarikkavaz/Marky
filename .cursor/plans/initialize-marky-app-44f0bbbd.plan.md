@@ -89,7 +89,35 @@
 
 ---
 
-## Phase 6: Math Detection & Calculation
+## Phase 6: Multiple File Support
+**Goal**: Able to open multiple files in separate windows with management features
+
+### Tasks:
+- Create new Tauri window for each opened file
+- Pass file path to new window via window label/args
+- Implement window-to-window file state management
+- Add "Open in New Window" option to file menu
+- Handle window close events (prompt for unsaved changes)
+- Manage window references and cleanup
+- Implement window manager service (track all open windows)
+- Add "Window" menu showing all open files (like macOS apps)
+- Allow focusing/switching between windows from menu
+- Detect and prevent opening same file in multiple windows
+- Add "New Window" command (empty editor)
+- Implement Cmd+N keyboard shortcut for new window
+- Add filename to window title (show "Untitled" if no file)
+- Implement window session restoration (reopen files on app restart)
+
+**Deliverables**:
+- Each file opens in its own independent window
+- Window manager tracks all open windows
+- Window menu for navigation between open files
+- Prevents duplicate file openings
+- Session restoration on app restart
+
+---
+
+## Phase 7: Math Detection & Calculation
 **Goal**: Detect and solve math expressions (4+5 ==)
 
 ### Tasks:
@@ -105,7 +133,7 @@
 
 ---
 
-## Phase 7: Measurement Conversion
+## Phase 8: Measurement Conversion
 **Goal**: Convert measurements (length, weight, etc.)
 
 ### Tasks:
@@ -124,7 +152,7 @@
 
 ---
 
-## Phase 8: Written-Form Calculations
+## Phase 9: Written-Form Calculations
 **Goal**: Solve written-form math ("half of 1 hour ==")
 
 ### Tasks:
@@ -142,7 +170,7 @@
 
 ---
 
-## Phase 9: Grammar & Style Correction
+## Phase 10: Grammar & Style Correction
 **Goal**: One-click grammar and style correction
 
 ### Tasks:
@@ -161,7 +189,7 @@
 
 ---
 
-## Phase 10: Prompt Area
+## Phase 11: Prompt Area
 **Goal**: Toggleable prompt area for text interaction
 
 ### Tasks:
@@ -177,7 +205,7 @@
 
 ---
 
-## Phase 11: Polish & Refinement
+## Phase 12: Polish & Refinement
 **Goal**: Final touches and optimizations
 
 ### Tasks:
