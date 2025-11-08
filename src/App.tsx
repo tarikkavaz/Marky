@@ -2,10 +2,12 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { Editor } from './components/Editor';
 import { Toolbar } from './components/Toolbar';
 import { WindowControls } from './components/WindowControls';
+
 import { openFile, saveFile, saveFileAs, exportToHTMLFile, type FileState } from './lib/fileOperations';
 import { Button } from './components/ui/button';
 import { Pencil, FolderOpen, Save, SaveAll, FileCode } from 'lucide-react';
 import { type Editor as TipTapEditor } from '@tiptap/react';
+import logo from '/logo.png';
 
 function App() {
   const [fileState, setFileState] = useState<FileState>({
@@ -186,16 +188,16 @@ function App() {
   }, []);
 
   return (
-    <div className="w-screen h-screen flex items-center justify-center bg-transparent">
-      <div className="flex flex-col w-[calc(100%-8px)] h-[calc(100%-8px)] bg-ui-window backdrop-blur-2xl text-foreground rounded-lg overflow-hidden shadow-2xl border border-ui-window">
+    <div className="w-screen h-screen bg-transparent text-foreground">
+      <div className="flex flex-col w-full h-full bg-ui-window backdrop-blur-2xl rounded-2xl shadow-2xl border border-ui-window overflow-hidden">
         {/* Header with window controls */}
-        <header className="flex items-center justify-between border-b border-border py-2" data-tauri-drag-region>
-          <div className="flex items-center gap-3 px-4" data-tauri-drag-region>
+        <header className="flex items-center justify-between border-b border-ui-window bg-secondary/50 py-2 px-4" data-tauri-drag-region>
+          <div className="flex items-center gap-2" data-tauri-drag-region>
             <WindowControls />
-            <div className="flex items-center gap-2" data-tauri-drag-region>
-              <img src="/logo.png" alt="Marky" className="size-8" data-tauri-drag-region />
-              <span className="text-sm font-semibold text-foreground select-none cursor-default" data-tauri-drag-region>Marky</span>
-            </div>
+          </div>
+          <div className="flex items-center gap-2" data-tauri-drag-region>
+            <img src={logo} alt="Marky" className="size-8" />
+            <span className="text-sm font-semibold text-foreground select-none cursor-default">Marky</span>
           </div>
           <div className="flex items-center gap-2 px-4" data-tauri-drag-region>
           <Button
@@ -252,7 +254,7 @@ function App() {
       {showToolbar && <Toolbar editor={editor} />}
 
       {/* Editor area */}
-      <main className="flex-1 overflow-hidden">
+      <main className="flex-1 overflow-hidden bg-background">
         <Editor 
           content={fileState.content} 
           onChange={handleContentChange}

@@ -19,6 +19,8 @@ import {
 } from 'lucide-react';
 import { InputDialog } from './InputDialog';
 import { useState, useEffect } from 'react';
+import { open, message } from '@tauri-apps/plugin-dialog';
+import { readFile } from '@tauri-apps/plugin-fs';
 
 interface ToolbarProps {
   editor: Editor | null;
@@ -74,9 +76,6 @@ export function Toolbar({ editor }: ToolbarProps) {
 
   const insertImage = async () => {
     try {
-      const { open } = await import('@tauri-apps/plugin-dialog');
-      const { readFile } = await import('@tauri-apps/plugin-fs');
-      
       const filePath = await open({
         multiple: false,
         filters: [{
@@ -109,7 +108,6 @@ export function Toolbar({ editor }: ToolbarProps) {
     const selectedText = editor.state.doc.textBetween(from, to, ' ');
     
     if (!selectedText || selectedText.trim() === '') {
-      const { message } = await import('@tauri-apps/plugin-dialog');
       await message('Please select some text first to add a link', { title: 'No Text Selected', kind: 'info' });
       return;
     }

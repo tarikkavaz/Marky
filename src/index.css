@@ -90,10 +90,8 @@
   --sidebar-ring: var(--color-gray-500);
   
   /* UI-specific colors */
-  --ui-window-bg: var(--color-gray-950);
-  --ui-window-bg-opacity: 0.97;
-  --ui-window-border: var(--color-gray-800);
-  --ui-window-border-opacity: 0.3;
+  --ui-window-bg: rgb(3, 7, 18);
+  --ui-window-border: rgb(41, 37, 36);
   --ui-dropdown-bg: var(--color-gray-800);
   --ui-dropdown-fg: var(--color-gray-300);
   --ui-dropdown-hover: var(--color-gray-700);
@@ -133,7 +131,7 @@
   --sidebar-accent-foreground: var(--color-gray-50);
   --sidebar-border: var(--color-gray-800);
   --sidebar-ring: var(--color-gray-500);
-  background: transparent !important;
+  
 }
 
 @layer base {
@@ -143,7 +141,6 @@
   html {
     color-scheme: dark;
     background: transparent !important;
-    background-color: transparent !important;
   }
   html,
   body {
@@ -152,25 +149,23 @@
     padding: 0;
     overflow: hidden;
     background: transparent !important;
-    background-color: transparent !important;
   }
   #root {
     width: 100vw;
     height: 100vh;
     overflow: hidden;
     background: transparent !important;
-    background-color: transparent !important;
   }
 }
 
 @layer components {
   /* UI Color Utilities */
   .bg-ui-window {
-    background-color: rgb(from var(--ui-window-bg) r g b / var(--ui-window-bg-opacity));
+    background-color: var(--ui-window-bg);
   }
   
   .border-ui-window {
-    border-color: rgb(from var(--ui-window-border) r g b / var(--ui-window-border-opacity));
+    border-color: var(--ui-window-border);
   }
   
   .bg-ui-dropdown {

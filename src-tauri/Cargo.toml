@@ -1,14 +1,12 @@
 [package]
-name = "app"
+name = "marky"
 version = "0.1.0"
-description = "A Tauri App"
-authors = ["you"]
-license = ""
-repository = ""
+description = "Marky - A Markdown Editor"
+authors = ["Tarik Kavaz"]
+license = "MIT"
+repository = "https://github.com/tarikkavaz/marky"
 edition = "2021"
 rust-version = "1.77.2"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [lib]
 name = "app_lib"
@@ -25,4 +23,3 @@ tauri = { version = "2.9.2", features = ["macos-private-api"] }
 tauri-plugin-log = "~2"
 tauri-plugin-fs = "~2"
 tauri-plugin-dialog = "2"
-window-vibrancy = "0.5.2"
