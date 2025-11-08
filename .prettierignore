@@ -1,0 +1,27 @@
+# Dependencies
+node_modules
+.pnpm-store
+
+# Build outputs
+dist
+build
+.next
+out
+
+# Tauri
+src-tauri/target
+src-tauri/Cargo.lock
+
+# Misc
+.DS_Store
+*.log
+*.lock
+pnpm-lock.yaml
+package-lock.json
+yarn.lock
+_tools
+
+# Environment
+.env
+.env.local
+.env.*.local
