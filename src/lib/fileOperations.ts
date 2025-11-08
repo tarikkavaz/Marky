@@ -2,6 +2,7 @@ import { open, save } from '@tauri-apps/plugin-dialog';
 import { readTextFile, writeTextFile } from '@tauri-apps/plugin-fs';
 import { dirname } from '@tauri-apps/api/path';
 import TurndownService from 'turndown';
+import { tables } from 'turndown-plugin-gfm';
 import { imageUrlToMarkdownPath, markdownPathToImageUrl } from './imageHandler';
 
 export interface FileState {
@@ -24,6 +25,16 @@ const turndownService = new TurndownService({
     return node.isBlock ? '\n\n' + node.outerHTML + '\n\n' : node.outerHTML;
   },
 });
+
+// Use GFM tables plugin for markdown table conversion
+console.log('tables plugin:', tables);
+turndownService.use(tables);
+
+// Test the table conversion
+const testTable = '<table><tr><th>A</th><th>B</th></tr><tr><td>1</td><td>2</td></tr></table>';
+const testResult = turndownService.turndown(testTable);
+console.log('Table plugin test:', testResult.includes('|') ? 'WORKING' : 'FAILED');
+console.log('Test result:', testResult);
 
 // Prevent escaping of square brackets in image/link paths
 turndownService.escape = (text) => {
@@ -65,7 +76,47 @@ async function markdownToHTML(markdown: string, markdownPath: string | null): Pr
     .replace(/`([^`]+)`/g, '<code>$1</code>')
     // Lists
     .replace(/^- (.+)$/gm, '<li>$1</li>')
-    .replace(/(<li>.*<\/li>\n?)+/g, '<ul>$&</ul>')
+    .replace(/(<li>.*<\/li>\n?)+/g, '<ul>$&</ul>');
+  
+  // Convert markdown tables to HTML (must be done before paragraph splitting)
+  html = html.replace(/(\|.+\|[\r\n]+)+/g, (match) => {
+    const rows = match.trim().split('\n').filter(row => row.trim());
+    if (rows.length < 2) return match; // Need at least header + separator
+    
+    // Check if second row is separator (e.g., | --- | --- |)
+    const isSeparator = rows[1].match(/^\|[\s-:|]+\|$/);
+    if (!isSeparator) return match; // Not a valid table
+    
+    // Build HTML table
+    let tableHtml = '<table>';
+    
+    // Header row
+    const headerCells = rows[0].split('|').filter(c => c.trim()).map(c => c.trim());
+    tableHtml += '<thead><tr>';
+    headerCells.forEach(cell => {
+      tableHtml += `<th>${cell}</th>`;
+    });
+    tableHtml += '</tr></thead>';
+    
+    // Body rows (skip separator)
+    if (rows.length > 2) {
+      tableHtml += '<tbody>';
+      for (let i = 2; i < rows.length; i++) {
+        const cells = rows[i].split('|').filter(c => c.trim()).map(c => c.trim());
+        tableHtml += '<tr>';
+        cells.forEach(cell => {
+          tableHtml += `<td>${cell}</td>`;
+        });
+        tableHtml += '</tr>';
+      }
+      tableHtml += '</tbody>';
+    }
+    
+    tableHtml += '</table>';
+    return tableHtml;
+  });
+  
+  html = html
     // Paragraphs - split by double newlines
     .split('\n\n')
     .map(para => {
@@ -144,6 +195,9 @@ async function convertImagePathsToUrls(html: string, _markdownPath: string): Pro
 // Convert HTML to Markdown for saving
 async function htmlToMarkdown(html: string, markdownPath: string | null): Promise<string> {
   try {
+    console.log('=== SAVING - htmlToMarkdown ===');
+    console.log('Has table tags:', html.includes('<table'));
+    
     // Restore original file paths from data-original-src attribute
     let processedHtml = html;
     if (markdownPath) {
@@ -165,18 +219,66 @@ async function htmlToMarkdown(html: string, markdownPath: string | null): Promis
       });
     }
     
+    // Log table HTML if present
+    if (processedHtml.includes('<table')) {
+      const tableMatch = processedHtml.match(/<table[\s\S]*?<\/table>/);
+      if (tableMatch) {
+        console.log('Table HTML (first 500 chars):', tableMatch[0].substring(0, 500));
+      }
+    }
+    
     // Clean up TipTap's HTML structure
-    const cleanedHtml = processedHtml
+    let cleanedHtml = processedHtml
       .replace(/<p><\/p>/g, '\n\n') // Empty paragraphs to double newlines
       .replace(/<br\s*\/?>/g, '  \n'); // BR tags to markdown line breaks (two spaces + newline)
     
+    // Remove <p> tags inside table cells for better GFM conversion
+    cleanedHtml = cleanedHtml.replace(/<(th|td)([^>]*)><p>([\s\S]*?)<\/p><\/(th|td)>/g, '<$1$2>$3</$4>');
+    
+    // Clean up TipTap's table HTML for GFM plugin compatibility
+    if (cleanedHtml.includes('<table')) {
+      cleanedHtml = cleanedHtml
+        // Remove style attributes from table elements
+        .replace(/<table[^>]*>/g, '<table>')
+        .replace(/<(th|td|tr)[^>]*>/g, '<$1>')
+        // Remove colgroup elements
+        .replace(/<colgroup>[\s\S]*?<\/colgroup>/g, '')
+        // Remove tbody/thead/tfoot wrappers (keep content)
+        .replace(/<\/?tbody>/g, '')
+        .replace(/<\/?thead>/g, '')
+        .replace(/<\/?tfoot>/g, '');
+    }
+    
+    // Log cleaned table HTML
+    if (cleanedHtml.includes('<table')) {
+      const tableMatch = cleanedHtml.match(/<table[\s\S]*?<\/table>/);
+      if (tableMatch) {
+        console.log('Cleaned table HTML (first 500 chars):', tableMatch[0].substring(0, 500));
+      }
+    }
+    
     const markdown = turndownService.turndown(cleanedHtml);
+    
+    console.log('Markdown has table syntax (|):', markdown.includes('|'));
+    console.log('Markdown has <table> tags:', markdown.includes('<table'));
+    
+    if (markdown.includes('|')) {
+      const lines = markdown.split('\n');
+      const tableLines = lines.filter(line => line.includes('|'));
+      console.log('Table lines in markdown:', tableLines.slice(0, 5));
+    } else if (markdown.includes('<table')) {
+      console.log('ERROR: Table was NOT converted to markdown, still HTML');
+      console.log('First 300 chars of markdown:', markdown.substring(0, 300));
+    }
     
     // Clean up excessive whitespace while preserving paragraph breaks
     const finalMarkdown = markdown
       .replace(/\n{4,}/g, '\n\n') // More than 3 newlines to double newlines
       .replace(/[ \t]+$/gm, '') // Remove trailing spaces from lines
       .trim();
+    
+    console.log('Final markdown has table syntax:', finalMarkdown.includes('|'));
+    console.log('=================================');
     
     return finalMarkdown;
   } catch (error) {
