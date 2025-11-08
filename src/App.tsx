@@ -4,7 +4,7 @@ import { Toolbar } from './components/Toolbar';
 import { WindowControls } from './components/WindowControls';
 import { openFile, saveFile, saveFileAs, exportToHTMLFile, type FileState } from './lib/fileOperations';
 import { Button } from './components/ui/button';
-import { PanelTop } from 'lucide-react';
+import { Pencil, FolderOpen, Save, SaveAll, FileCode } from 'lucide-react';
 import { type Editor as TipTapEditor } from '@tiptap/react';
 
 function App() {
@@ -188,7 +188,7 @@ function App() {
   return (
     <div className="flex flex-col h-screen w-screen bg-background text-foreground">
       {/* Header with window controls */}
-      <header className="flex items-center justify-between border-b border-border" data-tauri-drag-region>
+      <header className="flex items-center justify-between border-b border-border py-2" data-tauri-drag-region>
         <WindowControls />
         <div className="flex items-center gap-2 px-4" data-tauri-drag-region>
           <Button
@@ -196,21 +196,47 @@ function App() {
             size="sm"
             onClick={() => setShowToolbar(!showToolbar)}
             title="Toggle Toolbar"
+            className="h-8 w-8 p-0"
           >
-            <PanelTop className="h-4 w-4" />
+            <Pencil className="h-4 w-4" />
           </Button>
           <div className="w-px h-6 bg-border" />
-          <Button variant="ghost" size="sm" onClick={handleOpen}>
-            Open
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={handleOpen}
+            title="Open File (Cmd+O)"
+            className="h-8 w-8 p-0"
+          >
+            <FolderOpen className="h-4 w-4" />
           </Button>
-          <Button variant="ghost" size="sm" onClick={handleSave} disabled={!fileState.path && !fileState.hasUnsavedChanges}>
-            Save
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={handleSave} 
+            disabled={!fileState.path && !fileState.hasUnsavedChanges}
+            title="Save (Cmd+S)"
+            className="h-8 w-8 p-0"
+          >
+            <Save className="h-4 w-4" />
           </Button>
-          <Button variant="ghost" size="sm" onClick={handleSaveAs}>
-            Save As
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={handleSaveAs}
+            title="Save As (Cmd+Shift+S)"
+            className="h-8 w-8 p-0"
+          >
+            <SaveAll className="h-4 w-4" />
           </Button>
-          <Button variant="ghost" size="sm" onClick={handleExport}>
-            Export HTML
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={handleExport}
+            title="Export to HTML"
+            className="h-8 w-8 p-0"
+          >
+            <FileCode className="h-4 w-4" />
           </Button>
           {fileState.hasUnsavedChanges && (
             <span className="text-xs text-muted-foreground">Unsaved changes</span>

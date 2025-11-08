@@ -12,6 +12,7 @@
     "core:window:allow-maximize",
     "core:window:allow-toggle-maximize",
     "core:window:allow-unminimize",
+    "core:window:allow-start-dragging",
     "fs:default",
     "dialog:default",
     "fs:allow-read-text-file",
