@@ -216,8 +216,8 @@ function App() {
             size="sm" 
             onClick={handleSave} 
             disabled={!fileState.path && !fileState.hasUnsavedChanges}
-            title="Save (Cmd+S)"
-            className="h-8 w-8 p-0"
+            title={fileState.hasUnsavedChanges ? "Unsaved changes (Cmd+S)" : "Save (Cmd+S)"}
+            className={`h-8 w-8 p-0 ${fileState.hasUnsavedChanges ? 'animate-pulse bg-amber-500/20' : ''}`}
           >
             <Save className="h-4 w-4" />
           </Button>
@@ -239,9 +239,6 @@ function App() {
           >
             <FileCode className="h-4 w-4" />
           </Button>
-          {fileState.hasUnsavedChanges && (
-            <span className="text-xs text-muted-foreground">Unsaved changes</span>
-          )}
         </div>
       </header>
 

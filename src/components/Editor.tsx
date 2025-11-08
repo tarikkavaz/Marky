@@ -10,6 +10,7 @@ import { TableRow } from '@tiptap/extension-table-row';
 import { TableCell } from '@tiptap/extension-table-cell';
 import { TableHeader } from '@tiptap/extension-table-header';
 import { useEffect, useRef } from 'react';
+import { EditorContextMenu } from './EditorContextMenu';
 
 interface EditorProps {
   content: string;
@@ -105,7 +106,9 @@ export function Editor({ content, onChange, onEditorReady }: EditorProps) {
 
   return (
     <div className="w-full h-full overflow-hidden">
-      <EditorContent editor={editor} className="w-full h-full overflow-y-auto" />
+      <EditorContextMenu editor={editor}>
+        <EditorContent editor={editor} className="w-full h-full overflow-y-auto" />
+      </EditorContextMenu>
     </div>
   );
 }
