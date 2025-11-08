@@ -133,9 +133,9 @@ function App() {
         >
           <div className="flex items-center gap-2" data-tauri-drag-region>
             <WindowControls />
-            <img src={logo} alt="Marky" className="size-8" data-tauri-drag-region />
+            <img src={logo} alt="Marky" className="size-7" data-tauri-drag-region />
             <span
-              className="text-sm font-semibold text-foreground select-none cursor-default"
+              className="text-lg font-semibold text-foreground select-none cursor-default"
               data-tauri-drag-region
             >
               Marky
