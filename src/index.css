@@ -144,6 +144,10 @@
     min-height: 100%;
     outline: none;
   }
+
+  .ProseMirror p {
+    margin: 0;
+  }
   
   .ProseMirror p.is-editor-empty:first-child::before {
     content: attr(data-placeholder);
@@ -234,9 +238,14 @@
     border: 2px solid var(--color-stone-700);
     box-sizing: border-box;
     min-width: 1em;
-    padding: 0.5rem;
+    padding: 0.25rem 0.5rem;
     position: relative;
     vertical-align: top;
+  }
+
+  .ProseMirror table td p,
+  .ProseMirror table th p {
+    margin: .5em !important;
   }
 
   .ProseMirror table th {
