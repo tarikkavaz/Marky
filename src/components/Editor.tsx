@@ -75,7 +75,9 @@ const editorExtensions = [
   TabHandler,
   CodeBlockLowlight.extend({
     addNodeView() {
-      return ReactNodeViewRenderer(CodeBlockComponent);
+      return ReactNodeViewRenderer(CodeBlockComponent, {
+        contentDOMElementTag: 'code',
+      });
     },
     addKeyboardShortcuts() {
       return {

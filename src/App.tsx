@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Editor } from './components/Editor';
 import { Toolbar } from './components/Toolbar';
 import { WindowControls } from './components/WindowControls';
@@ -25,11 +25,6 @@ function App() {
   const [showToolbar, setShowToolbar] = useState(false);
   const [editor, setEditor] = useState<TipTapEditor | null>(null);
 
-  // Undo/Redo history
-  const historyRef = useRef<string[]>(['']);
-  const historyIndexRef = useRef<number>(0);
-  const isUndoRedoRef = useRef<boolean>(false);
-
   const handleOpen = async () => {
     try {
       const result = await openFile();
@@ -47,11 +42,14 @@ function App() {
 
   const handleSave = async () => {
     try {
-      const savedPath = await saveFile(fileState.content, fileState.path);
+      // Get current content from editor
+      const currentContent = editor?.getHTML() || fileState.content;
+      const savedPath = await saveFile(currentContent, fileState.path);
       if (savedPath) {
         setFileState(prev => ({
           ...prev,
           path: savedPath,
+          content: currentContent,
           hasUnsavedChanges: false,
         }));
       }
@@ -62,11 +60,14 @@ function App() {
 
   const handleSaveAs = async () => {
     try {
-      const savedPath = await saveFileAs(fileState.content);
+      // Get current content from editor
+      const currentContent = editor?.getHTML() || fileState.content;
+      const savedPath = await saveFileAs(currentContent);
       if (savedPath) {
         setFileState(prev => ({
           ...prev,
           path: savedPath,
+          content: currentContent,
           hasUnsavedChanges: false,
         }));
       }
@@ -77,7 +78,9 @@ function App() {
 
   const handleExport = async () => {
     try {
-      await exportToHTMLFile(fileState.content);
+      // Get current content from editor
+      const currentContent = editor?.getHTML() || fileState.content;
+      await exportToHTMLFile(currentContent);
     } catch (error) {
       console.error('Failed to export to HTML:', error);
     }
@@ -85,87 +88,17 @@ function App() {
 
   const handleContentChange = useCallback(
     (newContent: string) => {
-      // Don't add to history if this is an undo/redo operation
-      if (!isUndoRedoRef.current) {
-        const currentContent = fileState.content;
-
-        // Only add to history if content actually changed
-        if (currentContent !== newContent) {
-          // Remove any history after current index (when user types after undo)
-          historyRef.current = historyRef.current.slice(0, historyIndexRef.current + 1);
-
-          // Always save current state before the change (if it's different from last history entry)
-          const lastHistoryEntry = historyRef.current[historyIndexRef.current];
-          if (lastHistoryEntry !== currentContent) {
-            historyRef.current.push(currentContent);
-            historyIndexRef.current++;
-          }
-
-          // Add new content to history
-          historyRef.current.push(newContent);
-          historyIndexRef.current = historyRef.current.length - 1;
-
-          // Limit history size to 100 entries
-          if (historyRef.current.length > 100) {
-            historyRef.current.shift();
-            historyIndexRef.current--;
-          }
-        }
-      }
-
       setFileState(prev => ({
         ...prev,
         content: newContent,
         hasUnsavedChanges: prev.content !== newContent && (prev.path !== null || newContent !== ''),
       }));
     },
-    [fileState.content]
-  ); // Depend on fileState.content
+    []
+  );
 
-  const handleUndo = () => {
-    if (historyIndexRef.current > 0) {
-      historyIndexRef.current--;
-      isUndoRedoRef.current = true;
-      const previousContent = historyRef.current[historyIndexRef.current];
-      setFileState(prev => ({
-        ...prev,
-        content: previousContent,
-        hasUnsavedChanges: true,
-      }));
-      // Reset flag after state update
-      setTimeout(() => {
-        isUndoRedoRef.current = false;
-      }, 0);
-    }
-  };
 
-  const handleRedo = () => {
-    if (historyIndexRef.current < historyRef.current.length - 1) {
-      historyIndexRef.current++;
-      isUndoRedoRef.current = true;
-      const nextContent = historyRef.current[historyIndexRef.current];
-      setFileState(prev => ({
-        ...prev,
-        content: nextContent,
-        hasUnsavedChanges: true,
-      }));
-      // Reset flag after state update
-      setTimeout(() => {
-        isUndoRedoRef.current = false;
-      }, 0);
-    }
-  };
-
-  // Initialize history when file is opened
-  useEffect(() => {
-    if (fileState.path !== null) {
-      historyRef.current = [fileState.content];
-      historyIndexRef.current = 0;
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fileState.path]); // Reset history when file changes
-
-  // Keyboard shortcuts
+  // Keyboard shortcuts (excluding undo/redo which TipTap handles natively)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'o') {
@@ -181,14 +114,8 @@ function App() {
       } else if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'E') {
         e.preventDefault();
         handleExport();
-      } else if ((e.metaKey || e.ctrlKey) && e.key === 'z') {
-        e.preventDefault();
-        if (e.shiftKey) {
-          handleRedo();
-        } else {
-          handleUndo();
-        }
       }
+      // Note: Cmd+Z (undo) and Cmd+Shift+Z (redo) are handled natively by TipTap
     };
 
     window.addEventListener('keydown', handleKeyDown);
