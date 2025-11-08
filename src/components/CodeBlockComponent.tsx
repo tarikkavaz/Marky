@@ -66,18 +66,18 @@ export const CodeBlockComponent = ({ node, updateAttributes }: CodeBlockComponen
         <div className="relative">
           <button
             onClick={() => setIsSelectOpen(!isSelectOpen)}
-            className="px-2 py-1 text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 rounded border border-gray-600 transition-colors"
+            className="px-2 py-1 text-xs bg-ui-dropdown hover:bg-ui-dropdown-hover text-ui-dropdown rounded border border-ui-dropdown/70 transition-colors"
           >
             {LANGUAGES.find(l => l.value === currentLanguage)?.label || 'Auto'}
           </button>
           {isSelectOpen && (
-            <div className="absolute right-0 top-full mt-1 bg-gray-800 border border-gray-600 rounded shadow-lg max-h-60 overflow-y-auto min-w-[120px] z-20">
+            <div className="absolute right-0 top-full mt-1 bg-ui-dropdown border border-ui-dropdown/60 rounded shadow-lg max-h-60 overflow-y-auto min-w-[120px] z-20">
               {LANGUAGES.map(lang => (
                 <button
                   key={lang.value}
                   onClick={() => handleLanguageChange(lang.value)}
-                  className={`w-full text-left px-3 py-1.5 text-xs hover:bg-gray-700 transition-colors ${
-                    currentLanguage === lang.value ? 'bg-gray-700 text-white' : 'text-gray-300'
+                  className={`w-full text-left px-3 py-1.5 text-xs hover:bg-ui-dropdown-hover transition-colors ${
+                    currentLanguage === lang.value ? 'bg-ui-dropdown-active text-white' : 'text-ui-dropdown'
                   }`}
                 >
                   {lang.label}

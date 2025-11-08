@@ -187,7 +187,7 @@ function App() {
 
   return (
     <div className="w-screen h-screen flex items-center justify-center bg-transparent">
-      <div className="flex flex-col w-[calc(100%-8px)] h-[calc(100%-8px)] bg-gray-950/97 backdrop-blur-2xl text-foreground rounded-xl overflow-hidden shadow-2xl border border-gray-800/30">
+      <div className="flex flex-col w-[calc(100%-8px)] h-[calc(100%-8px)] bg-ui-window backdrop-blur-2xl text-foreground rounded-xl overflow-hidden shadow-2xl border border-ui-window">
         {/* Header with window controls */}
         <header className="flex items-center justify-between border-b border-border py-2" data-tauri-drag-region>
           <WindowControls />

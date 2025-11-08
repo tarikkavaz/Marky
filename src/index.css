@@ -88,6 +88,17 @@
   --sidebar-accent-foreground: var(--color-gray-50);
   --sidebar-border: var(--color-gray-800);
   --sidebar-ring: var(--color-gray-500);
+  
+  /* UI-specific colors */
+  --ui-window-bg: var(--color-gray-950);
+  --ui-window-bg-opacity: 0.97;
+  --ui-window-border: var(--color-gray-800);
+  --ui-window-border-opacity: 0.3;
+  --ui-dropdown-bg: var(--color-gray-800);
+  --ui-dropdown-fg: var(--color-gray-300);
+  --ui-dropdown-hover: var(--color-gray-700);
+  --ui-dropdown-active: var(--color-gray-700);
+  --ui-dropdown-border: var(--color-gray-600);
 }
 
 .dark {
@@ -153,6 +164,35 @@
 }
 
 @layer components {
+  /* UI Color Utilities */
+  .bg-ui-window {
+    background-color: rgb(from var(--ui-window-bg) r g b / var(--ui-window-bg-opacity));
+  }
+  
+  .border-ui-window {
+    border-color: rgb(from var(--ui-window-border) r g b / var(--ui-window-border-opacity));
+  }
+  
+  .bg-ui-dropdown {
+    background-color: var(--ui-dropdown-bg);
+  }
+  
+  .text-ui-dropdown {
+    color: var(--ui-dropdown-fg);
+  }
+  
+  .hover\:bg-ui-dropdown-hover:hover {
+    background-color: var(--ui-dropdown-hover);
+  }
+  
+  .bg-ui-dropdown-active {
+    background-color: var(--ui-dropdown-active);
+  }
+  
+  .border-ui-dropdown {
+    border-color: var(--ui-dropdown-border);
+  }
+
   .ProseMirror {
     /* Editor text variables */
     --editor-caret-color: #22c55e;
@@ -224,7 +264,7 @@
   }
   
   .ProseMirror code {
-    background-color: var(--color-gray-800);
+    /* background-color: var(--color-gray-800); */
     border-radius: var(--editor-inline-code-radius);
     padding: var(--editor-inline-code-padding-y) var(--editor-inline-code-padding-x);
     font-family: 'Courier New', Courier, monospace;
