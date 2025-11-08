@@ -24,7 +24,10 @@ const editorExtensions = [
     heading: {
       levels: [1, 2, 3],
     },
-    history: false,
+    history: {
+      depth: 100,
+      newGroupDelay: 500,
+    },
   }),
   Typography,
   Underline,
@@ -56,6 +59,30 @@ export function Editor({ content, onChange, onEditorReady }: EditorProps) {
     editorProps: {
       attributes: {
         class: 'prose prose-invert max-w-none focus:outline-none min-h-full p-8',
+      },
+      handlePaste(view, event, slice) {
+        // Get plain text to strip all inline styles and formatting
+        const plainText = event.clipboardData?.getData('text/plain');
+        if (plainText) {
+          // Split by double newlines for actual paragraphs
+          const paragraphs = plainText.split(/\n\n+/).filter(p => p.trim());
+          let tr = view.state.tr;
+          
+          paragraphs.forEach((paragraph, index) => {
+            // Replace single newlines within paragraph with spaces
+            const cleanText = paragraph.replace(/\n/g, ' ');
+            tr = tr.insertText(cleanText);
+            
+            // Add paragraph break between paragraphs (except last)
+            if (index < paragraphs.length - 1) {
+              tr = tr.split(tr.selection.to);
+            }
+          });
+          
+          view.dispatch(tr);
+            return true;
+        }
+        return false;
       },
     },
     onUpdate: ({ editor }) => {
@@ -90,8 +117,8 @@ export function Editor({ content, onChange, onEditorReady }: EditorProps) {
       // Set content directly (temporary - not converting from markdown yet)
       editor.commands.setContent(content);
       lastContentRef.current = content;
-      setTimeout(() => {
-        isUpdatingRef.current = false;
+    setTimeout(() => {
+      isUpdatingRef.current = false;
       }, 0);
     }
   }, [content, editor]);

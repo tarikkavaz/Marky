@@ -13,9 +13,11 @@ import {
   Code,
   List,
   ListOrdered,
+  Undo,
+  Redo,
 } from 'lucide-react';
 import { InputDialog } from './InputDialog';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 interface ToolbarProps {
   editor: Editor | null;
@@ -26,6 +28,24 @@ export function Toolbar({ editor }: ToolbarProps) {
   const [tableRowsDialogOpen, setTableRowsDialogOpen] = useState(false);
   const [tableColsDialogOpen, setTableColsDialogOpen] = useState(false);
   const [pendingTableRows, setPendingTableRows] = useState<number>(3);
+  const [, setUpdateTrigger] = useState(0);
+
+  // Force toolbar to re-render when editor selection changes
+  useEffect(() => {
+    if (!editor) return;
+
+    const updateToolbar = () => {
+      setUpdateTrigger(prev => prev + 1);
+    };
+
+    editor.on('selectionUpdate', updateToolbar);
+    editor.on('transaction', updateToolbar);
+
+    return () => {
+      editor.off('selectionUpdate', updateToolbar);
+      editor.off('transaction', updateToolbar);
+    };
+  }, [editor]);
 
   if (!editor) {
     return null;
@@ -43,6 +63,12 @@ export function Toolbar({ editor }: ToolbarProps) {
     editor.chain().focus().toggleHeading({ level }).run();
   const toggleBulletList = () => editor.chain().focus().toggleBulletList().run();
   const toggleOrderedList = () => editor.chain().focus().toggleOrderedList().run();
+  
+  const handleUndo = () => editor.chain().focus().undo().run();
+  const handleRedo = () => editor.chain().focus().redo().run();
+  
+  const canUndo = editor.can().undo();
+  const canRedo = editor.can().redo();
 
   const insertImage = async () => {
     try {
@@ -120,6 +146,32 @@ export function Toolbar({ editor }: ToolbarProps) {
 
   return (
     <div className="flex items-center gap-1 px-4 py-2 border-b border-border bg-background/50 backdrop-blur-sm">
+      {/* Undo/Redo */}
+      <div className="flex items-center gap-0.5">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={handleUndo}
+          disabled={!canUndo}
+          className="h-8 w-8 p-0"
+          title="Undo (Cmd+Z)"
+        >
+          <Undo className="h-4 w-4" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={handleRedo}
+          disabled={!canRedo}
+          className="h-8 w-8 p-0"
+          title="Redo (Cmd+Shift+Z)"
+        >
+          <Redo className="h-4 w-4" />
+        </Button>
+      </div>
+
+      <div className="w-px h-6 bg-border mx-1" />
+
       {/* Text Formatting */}
       <div className="flex items-center gap-0.5">
         <Button

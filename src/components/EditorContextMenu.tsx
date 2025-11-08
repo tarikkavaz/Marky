@@ -21,10 +21,12 @@ import {
   Heading3,
   List,
   ListOrdered,
+  Undo,
+  Redo,
 } from 'lucide-react';
 import { open, message } from '@tauri-apps/plugin-dialog';
 import { readFile } from '@tauri-apps/plugin-fs';
-import { ReactNode, useState } from 'react';
+import { ReactNode, useState, useEffect } from 'react';
 import { InputDialog } from './InputDialog';
 
 interface EditorContextMenuProps {
@@ -44,6 +46,24 @@ export function EditorContextMenu({
   const [tableRowsDialogOpen, setTableRowsDialogOpen] = useState(false);
   const [tableColsDialogOpen, setTableColsDialogOpen] = useState(false);
   const [pendingTableRows, setPendingTableRows] = useState<number>(3);
+  const [, setUpdateTrigger] = useState(0);
+
+  // Force context menu to re-render when editor selection changes
+  useEffect(() => {
+    if (!editor) return;
+
+    const updateMenu = () => {
+      setUpdateTrigger(prev => prev + 1);
+    };
+
+    editor.on('selectionUpdate', updateMenu);
+    editor.on('transaction', updateMenu);
+
+    return () => {
+      editor.off('selectionUpdate', updateMenu);
+      editor.off('transaction', updateMenu);
+    };
+  }, [editor]);
 
   if (!editor) {
     return <>{children}</>;
@@ -143,12 +163,30 @@ export function EditorContextMenu({
     return editor.isActive(name, attrs);
   };
 
+  const handleUndo = () => editor.chain().focus().undo().run();
+  const handleRedo = () => editor.chain().focus().redo().run();
+  
+  const canUndo = editor.can().undo();
+  const canRedo = editor.can().redo();
+
   return (
     <ContextMenu>
       <ContextMenuTrigger asChild>
         {children}
       </ContextMenuTrigger>
       <ContextMenuContent className="w-64">
+        {/* Undo/Redo */}
+        <ContextMenuItem onSelect={handleUndo} disabled={!canUndo}>
+          <Undo className="mr-2 h-4 w-4" />
+          Undo
+        </ContextMenuItem>
+        <ContextMenuItem onSelect={handleRedo} disabled={!canRedo}>
+          <Redo className="mr-2 h-4 w-4" />
+          Redo
+        </ContextMenuItem>
+        
+        <ContextMenuSeparator />
+        
         {/* Text Formatting */}
         <ContextMenuItem onSelect={toggleBold}>
           <Bold className="mr-2 h-4 w-4" />
