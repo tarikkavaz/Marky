@@ -26,7 +26,8 @@ import {
 } from 'lucide-react';
 import { open, message } from '@tauri-apps/plugin-dialog';
 import { readFile } from '@tauri-apps/plugin-fs';
-import { ReactNode, useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
+import type { ReactNode } from 'react';
 import { InputDialog } from './InputDialog';
 
 interface EditorContextMenuProps {

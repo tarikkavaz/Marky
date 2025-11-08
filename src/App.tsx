@@ -187,7 +187,7 @@ function App() {
 
   return (
     <div className="w-screen h-screen flex items-center justify-center bg-transparent">
-      <div className="flex flex-col w-[calc(100%-8px)] h-[calc(100%-8px)] bg-stone-950/95 backdrop-blur-xl text-foreground rounded-2xl overflow-hidden shadow-2xl border border-stone-800">
+      <div className="flex flex-col w-[calc(100%-8px)] h-[calc(100%-8px)] bg-gray-950/97 backdrop-blur-2xl text-foreground rounded-xl overflow-hidden shadow-2xl border border-gray-800/30">
         {/* Header with window controls */}
         <header className="flex items-center justify-between border-b border-border py-2" data-tauri-drag-region>
           <WindowControls />
@@ -217,7 +217,7 @@ function App() {
             onClick={handleSave} 
             disabled={!fileState.path && !fileState.hasUnsavedChanges}
             title={fileState.hasUnsavedChanges ? "Unsaved changes (Cmd+S)" : "Save (Cmd+S)"}
-            className={`h-8 w-8 p-0 ${fileState.hasUnsavedChanges ? 'animate-pulse bg-amber-500/20' : ''}`}
+            className={`h-8 w-8 p-0 ${fileState.hasUnsavedChanges ? 'animate-blink-outline' : ''}`}
           >
             <Save className="h-4 w-4" />
           </Button>

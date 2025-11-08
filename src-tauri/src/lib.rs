@@ -1,3 +1,11 @@
+use tauri::Manager;
+
+#[cfg(target_os = "macos")]
+use window_vibrancy::{apply_vibrancy, NSVisualEffectMaterial};
+
+#[cfg(target_os = "windows")]
+use window_vibrancy::apply_blur;
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -11,6 +19,18 @@ pub fn run() {
                         .build(),
                 )?;
             }
+
+            // Get window for devtools
+            let window = app.get_webview_window("main").unwrap();
+
+            // No vibrancy/blur applied - fully transparent window
+            // The CSS backdrop-filter will handle the blur effect
+
+            #[cfg(debug_assertions)]
+            {
+                window.open_devtools();
+            }
+
             Ok(())
         })
         .run(tauri::generate_context!())

@@ -1,0 +1,173 @@
+/* Code Block Syntax Highlighting - Material NewTabLab Theme */
+
+:root {
+  /* Code block layout */
+  --code-bg: #21252b;
+  --code-text: #ffffffc1;
+  --code-font-size: 1.05rem;
+  --code-font-weight: 500;
+  --code-line-height: 1.6;
+  --code-border-radius: 0.5rem;
+  --code-padding: 1rem;
+  --code-padding-top: 2.5rem;
+  --code-margin: 1rem 0;
+  --code-font-family: 'Courier New', Courier, monospace;
+  
+  /* Syntax highlighting colors */
+  --code-comment: #ffffff4c;
+  --code-keyword: #8c5da7;
+  --code-string: #91b56b;
+  --code-function: #6076b1;
+  --code-variable: #db1b7a;
+  --code-number: #d19a66;
+  --code-type: #e5c07b;
+  --code-operator: #56b6c2;
+  --code-punctuation: #ffffffc1;
+  
+  /* Diff colors */
+  --code-diff-add-bg: #79943a33;
+  --code-diff-add-fg: #91b56b;
+  --code-diff-delete-bg: #ff4e4e33;
+  --code-diff-delete-fg: #f14c4c;
+}
+
+.ProseMirror .code-block-wrapper {
+  position: relative;
+  margin: var(--code-margin);
+}
+
+.ProseMirror .code-block-wrapper pre {
+  background-color: var(--code-bg);
+  border-radius: var(--code-border-radius);
+  padding: var(--code-padding);
+  padding-top: var(--code-padding-top);
+  overflow-x: auto;
+  font-family: var(--code-font-family);
+  font-size: var(--code-font-size);
+  font-weight: var(--code-font-weight);
+  line-height: var(--code-line-height);
+  margin: 0;
+}
+
+.ProseMirror pre {
+  background-color: var(--code-bg);
+  border-radius: var(--code-border-radius);
+  padding: var(--code-padding);
+  overflow-x: auto;
+  font-family: var(--code-font-family);
+  font-size: var(--code-font-size);
+  font-weight: var(--code-font-weight);
+  line-height: var(--code-line-height);
+}
+
+.ProseMirror pre code {
+  background-color: transparent;
+  padding: 0;
+  color: var(--code-text);
+  font-size: var(--code-font-size);
+  font-weight: var(--code-font-weight);
+}
+
+/* Comments */
+.ProseMirror .hljs-comment,
+.ProseMirror .hljs-quote {
+  color: var(--code-comment);
+  font-style: italic;
+}
+
+/* Keywords - purple */
+.ProseMirror .hljs-keyword,
+.ProseMirror .hljs-selector-tag,
+.ProseMirror .hljs-subst,
+.ProseMirror .hljs-built_in,
+.ProseMirror .hljs-builtin-name {
+  color: var(--code-keyword);
+}
+
+/* Strings - green */
+.ProseMirror .hljs-string,
+.ProseMirror .hljs-doctag,
+.ProseMirror .hljs-attr,
+.ProseMirror .hljs-template-variable {
+  color: var(--code-string);
+}
+
+/* Functions - blue */
+.ProseMirror .hljs-function,
+.ProseMirror .hljs-title,
+.ProseMirror .hljs-section,
+.ProseMirror .hljs-selector-id,
+.ProseMirror .hljs-attribute {
+  color: var(--code-function);
+}
+
+/* Variables, tags - pink/magenta */
+.ProseMirror .hljs-variable,
+.ProseMirror .hljs-tag,
+.ProseMirror .hljs-name,
+.ProseMirror .hljs-selector-class,
+.ProseMirror .hljs-selector-attr,
+.ProseMirror .hljs-selector-pseudo {
+  color: var(--code-variable);
+}
+
+/* Numbers, constants - orange */
+.ProseMirror .hljs-number,
+.ProseMirror .hljs-literal,
+.ProseMirror .hljs-constant,
+.ProseMirror .hljs-regexp {
+  color: var(--code-number);
+}
+
+/* Types, classes - yellow */
+.ProseMirror .hljs-type,
+.ProseMirror .hljs-class,
+.ProseMirror .hljs-class .hljs-title,
+.ProseMirror .hljs-params {
+  color: var(--code-type);
+}
+
+/* Operators - cyan */
+.ProseMirror .hljs-operator,
+.ProseMirror .hljs-symbol,
+.ProseMirror .hljs-bullet,
+.ProseMirror .hljs-link {
+  color: var(--code-operator);
+}
+
+/* Meta, preprocessor */
+.ProseMirror .hljs-meta {
+  color: var(--code-number);
+}
+
+/* Diff additions - green background */
+.ProseMirror .hljs-addition {
+  background: var(--code-diff-add-bg);
+  color: var(--code-diff-add-fg);
+}
+
+/* Diff deletions - red background */
+.ProseMirror .hljs-deletion {
+  background: var(--code-diff-delete-bg);
+  color: var(--code-diff-delete-fg);
+}
+
+/* Emphasis */
+.ProseMirror .hljs-emphasis {
+  font-style: italic;
+}
+
+/* Strong */
+.ProseMirror .hljs-strong {
+  font-weight: bold;
+}
+
+/* Template strings, interpolation */
+.ProseMirror .hljs-template-tag {
+  color: var(--code-keyword);
+}
+
+/* Punctuation */
+.ProseMirror .hljs-punctuation {
+  color: var(--code-punctuation);
+}

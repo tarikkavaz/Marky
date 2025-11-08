@@ -1,4 +1,4 @@
-import { useEditor, EditorContent, type Editor as TipTapEditor } from '@tiptap/react';
+import { useEditor, EditorContent, type Editor as TipTapEditor, ReactNodeViewRenderer } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
 import Typography from '@tiptap/extension-typography';
@@ -9,8 +9,54 @@ import { Table } from '@tiptap/extension-table';
 import { TableRow } from '@tiptap/extension-table-row';
 import { TableCell } from '@tiptap/extension-table-cell';
 import { TableHeader } from '@tiptap/extension-table-header';
+import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight';
+import { Extension } from '@tiptap/core';
+import { common, createLowlight } from 'lowlight';
 import { useEffect, useRef } from 'react';
 import { EditorContextMenu } from './EditorContextMenu';
+import { CodeBlockComponent } from './CodeBlockComponent';
+
+// Create lowlight instance with common languages
+const lowlight = createLowlight(common);
+
+// Custom extension for Tab handling in lists
+const TabHandler = Extension.create({
+  name: 'tabHandler',
+  
+  addKeyboardShortcuts() {
+    return {
+      Tab: () => {
+        // Handle Tab for lists (indent)
+        // Check if we're in a list item context
+        const { state } = this.editor;
+        const { $from } = state.selection;
+        
+        // Check if we're inside a listItem
+        for (let d = $from.depth; d > 0; d--) {
+          if ($from.node(d).type.name === 'listItem') {
+            return this.editor.commands.sinkListItem('listItem');
+          }
+        }
+        
+        return false;
+      },
+      'Shift-Tab': () => {
+        // Handle Shift+Tab for lists (outdent)
+        const { state } = this.editor;
+        const { $from } = state.selection;
+        
+        // Check if we're inside a listItem
+        for (let d = $from.depth; d > 0; d--) {
+          if ($from.node(d).type.name === 'listItem') {
+            return this.editor.commands.liftListItem('listItem');
+          }
+        }
+        
+        return false;
+      },
+    };
+  },
+});
 
 interface EditorProps {
   content: string;
@@ -24,10 +70,53 @@ const editorExtensions = [
     heading: {
       levels: [1, 2, 3],
     },
-    history: {
-      depth: 100,
-      newGroupDelay: 500,
+    codeBlock: false, // Disable default code block
+  }),
+  TabHandler,
+  CodeBlockLowlight.extend({
+    addNodeView() {
+      return ReactNodeViewRenderer(CodeBlockComponent);
     },
+    addKeyboardShortcuts() {
+      return {
+        Tab: () => {
+          // Only handle Tab in code blocks
+          if (this.editor.isActive('codeBlock')) {
+            // Insert 2 spaces
+            return this.editor.commands.insertContent('  ');
+          }
+          return false;
+        },
+        'Shift-Tab': () => {
+          // Only handle Shift+Tab in code blocks
+          if (this.editor.isActive('codeBlock')) {
+            const { state } = this.editor;
+            const { selection } = state;
+            const { $from } = selection;
+            
+            // Get the text before the cursor
+            const textBefore = $from.parent.textContent.substring(0, $from.parentOffset);
+            
+            // Check if there are spaces before cursor that we can remove
+            if (textBefore.endsWith('  ')) {
+              // Remove 2 spaces
+              const from = $from.pos - 2;
+              const to = $from.pos;
+              return this.editor.commands.deleteRange({ from, to });
+            } else if (textBefore.endsWith(' ')) {
+              // Remove 1 space if only 1 space exists
+              const from = $from.pos - 1;
+              const to = $from.pos;
+              return this.editor.commands.deleteRange({ from, to });
+            }
+            return true;
+          }
+          return false;
+        },
+      };
+    },
+  }).configure({
+    lowlight,
   }),
   Typography,
   Underline,
@@ -60,29 +149,40 @@ export function Editor({ content, onChange, onEditorReady }: EditorProps) {
       attributes: {
         class: 'prose prose-invert max-w-none focus:outline-none min-h-full p-8',
       },
-      handlePaste(view, event, slice) {
-        // Get plain text to strip all inline styles and formatting
-        const plainText = event.clipboardData?.getData('text/plain');
-        if (plainText) {
-          // Split by double newlines for actual paragraphs
-          const paragraphs = plainText.split(/\n\n+/).filter(p => p.trim());
-          let tr = view.state.tr;
-          
-          paragraphs.forEach((paragraph, index) => {
-            // Replace single newlines within paragraph with spaces
-            const cleanText = paragraph.replace(/\n/g, ' ');
-            tr = tr.insertText(cleanText);
-            
-            // Add paragraph break between paragraphs (except last)
-            if (index < paragraphs.length - 1) {
-              tr = tr.split(tr.selection.to);
-            }
-          });
-          
-          view.dispatch(tr);
-            return true;
+      handlePaste: (view, event) => {
+        const text = event.clipboardData?.getData('text/plain');
+        if (!text) return false;
+        
+        // Split by double newlines to get paragraphs
+        const paragraphs = text.split(/\n\n+/).filter(p => p.trim());
+        
+        if (paragraphs.length <= 1) {
+          // Single paragraph, use default behavior
+          return false;
         }
-        return false;
+        
+        // Multiple paragraphs - insert them properly
+        const { state } = view;
+        const { tr } = state;
+        const { from } = state.selection;
+        
+        // Build the content
+        let offset = from;
+        paragraphs.forEach((para, index) => {
+          const cleanText = para.replace(/\n/g, ' ').trim();
+          tr.insertText(cleanText, offset);
+          offset += cleanText.length;
+          
+          // Add paragraph break except after the last one
+          if (index < paragraphs.length - 1) {
+            // Split the paragraph to create a new one
+            tr.split(offset);
+            offset += 1;
+          }
+        });
+        
+        view.dispatch(tr);
+        return true;
       },
     },
     onUpdate: ({ editor }) => {

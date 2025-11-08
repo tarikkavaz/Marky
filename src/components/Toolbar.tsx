@@ -11,6 +11,7 @@ import {
   Table,
   Link,
   Code,
+  FileCode,
   List,
   ListOrdered,
   Undo,
@@ -59,6 +60,7 @@ export function Toolbar({ editor }: ToolbarProps) {
   const toggleItalic = () => editor.chain().focus().toggleItalic().run();
   const toggleUnderline = () => editor.chain().focus().toggleUnderline().run();
   const toggleCode = () => editor.chain().focus().toggleCode().run();
+  const toggleCodeBlock = () => editor.chain().focus().toggleCodeBlock().run();
   const toggleHeading = (level: 1 | 2 | 3) => 
     editor.chain().focus().toggleHeading({ level }).run();
   const toggleBulletList = () => editor.chain().focus().toggleBulletList().run();
@@ -206,9 +208,18 @@ export function Toolbar({ editor }: ToolbarProps) {
           size="sm"
           onClick={toggleCode}
           className="h-8 w-8 p-0"
-          title="Code"
+          title="Inline Code"
         >
           <Code className="h-4 w-4" />
+        </Button>
+        <Button
+          variant={isActive('codeBlock') ? 'default' : 'ghost'}
+          size="sm"
+          onClick={toggleCodeBlock}
+          className="h-8 w-8 p-0"
+          title="Code Block"
+        >
+          <FileCode className="h-4 w-4" />
         </Button>
       </div>
 
