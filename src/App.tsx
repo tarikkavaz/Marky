@@ -1,8 +1,11 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Editor } from './components/Editor';
+import { Toolbar } from './components/Toolbar';
 import { WindowControls } from './components/WindowControls';
 import { openFile, saveFile, saveFileAs, exportToHTMLFile, type FileState } from './lib/fileOperations';
 import { Button } from './components/ui/button';
+import { PanelTop } from 'lucide-react';
+import { type Editor as TipTapEditor } from '@tiptap/react';
 
 function App() {
   const [fileState, setFileState] = useState<FileState>({
@@ -10,6 +13,9 @@ function App() {
     content: '',
     hasUnsavedChanges: false,
   });
+
+  const [showToolbar, setShowToolbar] = useState(true);
+  const [editor, setEditor] = useState<TipTapEditor | null>(null);
 
   // Undo/Redo history
   const historyRef = useRef<string[]>(['']);
@@ -69,7 +75,7 @@ function App() {
     }
   };
 
-  const handleContentChange = (newContent: string) => {
+  const handleContentChange = useCallback((newContent: string) => {
     // Don't add to history if this is an undo/redo operation
     if (!isUndoRedoRef.current) {
       const currentContent = fileState.content;
@@ -103,7 +109,7 @@ function App() {
       content: newContent,
       hasUnsavedChanges: prev.content !== newContent && (prev.path !== null || newContent !== ''),
     }));
-  };
+  }, [fileState.content]); // Depend on fileState.content
 
   const handleUndo = () => {
     if (historyIndexRef.current > 0) {
@@ -185,6 +191,15 @@ function App() {
       <header className="flex items-center justify-between border-b border-border" data-tauri-drag-region>
         <WindowControls />
         <div className="flex items-center gap-2 px-4" data-tauri-drag-region>
+          <Button
+            variant={showToolbar ? 'default' : 'ghost'}
+            size="sm"
+            onClick={() => setShowToolbar(!showToolbar)}
+            title="Toggle Toolbar"
+          >
+            <PanelTop className="h-4 w-4" />
+          </Button>
+          <div className="w-px h-6 bg-border" />
           <Button variant="ghost" size="sm" onClick={handleOpen}>
             Open
           </Button>
@@ -203,9 +218,16 @@ function App() {
         </div>
       </header>
 
+      {/* Toolbar */}
+      {showToolbar && <Toolbar editor={editor} />}
+
       {/* Editor area */}
       <main className="flex-1 overflow-hidden">
-        <Editor content={fileState.content} onChange={handleContentChange} />
+        <Editor 
+          content={fileState.content} 
+          onChange={handleContentChange}
+          onEditorReady={setEditor}
+        />
       </main>
     </div>
   );

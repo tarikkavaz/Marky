@@ -29,10 +29,31 @@ importers:
       '@tiptap/extension-document':
         specifier: ^3.10.3
         version: 3.10.3(@tiptap/core@3.10.3(@tiptap/pm@3.10.3))
+      '@tiptap/extension-image':
+        specifier: ^3.10.3
+        version: 3.10.3(@tiptap/core@3.10.3(@tiptap/pm@3.10.3))
+      '@tiptap/extension-link':
+        specifier: ^3.10.3
+        version: 3.10.3(@tiptap/core@3.10.3(@tiptap/pm@3.10.3))(@tiptap/pm@3.10.3)
       '@tiptap/extension-placeholder':
         specifier: ^3.10.3
         version: 3.10.3(@tiptap/extensions@3.10.3(@tiptap/core@3.10.3(@tiptap/pm@3.10.3))(@tiptap/pm@3.10.3))
+      '@tiptap/extension-table':
+        specifier: ^3.10.3
+        version: 3.10.3(@tiptap/core@3.10.3(@tiptap/pm@3.10.3))(@tiptap/pm@3.10.3)
+      '@tiptap/extension-table-cell':
+        specifier: ^3.10.3
+        version: 3.10.3(@tiptap/extension-table@3.10.3(@tiptap/core@3.10.3(@tiptap/pm@3.10.3))(@tiptap/pm@3.10.3))
+      '@tiptap/extension-table-header':
+        specifier: ^3.10.3
+        version: 3.10.3(@tiptap/extension-table@3.10.3(@tiptap/core@3.10.3(@tiptap/pm@3.10.3))(@tiptap/pm@3.10.3))
+      '@tiptap/extension-table-row':
+        specifier: ^3.10.3
+        version: 3.10.3(@tiptap/extension-table@3.10.3(@tiptap/core@3.10.3(@tiptap/pm@3.10.3))(@tiptap/pm@3.10.3))
       '@tiptap/extension-typography':
+        specifier: ^3.10.3
+        version: 3.10.3(@tiptap/core@3.10.3(@tiptap/pm@3.10.3))
+      '@tiptap/extension-underline':
         specifier: ^3.10.3
         version: 3.10.3(@tiptap/core@3.10.3(@tiptap/pm@3.10.3))
       '@tiptap/pm':
@@ -56,9 +77,6 @@ importers:
       markdown-it:
         specifier: ^14.1.0
         version: 14.1.0
-      marked:
-        specifier: ^17.0.0
-        version: 17.0.0
       prosemirror-markdown:
         specifier: ^1.13.2
         version: 1.13.2
@@ -80,9 +98,6 @@ importers:
       tailwind-merge:
         specifier: ^3.3.1
         version: 3.3.1
-      tiptap-markdown:
-        specifier: ^0.9.0
-        version: 0.9.0(@tiptap/core@3.10.3(@tiptap/pm@3.10.3))
       unified:
         specifier: ^11.0.5
         version: 11.0.5
@@ -99,9 +114,6 @@ importers:
       '@tauri-apps/cli':
         specifier: ^2.9.3
         version: 2.9.3
-      '@types/marked':
-        specifier: ^6.0.0
-        version: 6.0.0
       '@types/node':
         specifier: ^24.6.0
         version: 24.10.0
@@ -1139,6 +1151,11 @@ packages:
       '@tiptap/core': ^3.10.3
       '@tiptap/pm': ^3.10.3
 
+  '@tiptap/extension-image@3.10.3':
+    resolution: {integrity: sha512-mZsz+pusSlRg6474YjEilA4U/Zfput2FCuDz/kut2H0Io7eOUAk6lqGX8t1GcO5WBSq1PgCoMNRbne1i6MHzaw==}
+    peerDependencies:
+      '@tiptap/core': ^3.10.3
+
   '@tiptap/extension-italic@3.10.3':
     resolution: {integrity: sha512-hGbEl+mkHQCqtn+xn1VbqbtAnnwGRrwZ2acceD3svGVVbqrnlKTVIWmekUuAn4xa1WNPHWYiudcWwyyjFfUhZg==}
     peerDependencies:
@@ -1185,6 +1202,27 @@ packages:
     resolution: {integrity: sha512-LsjwZumCP1djYaPpoz7ROoIy2viFuMSiOy5T5t+PznBNbeRnFWl9pw2vPEbqMxvbQhKnToJeffu9NTuR/KfHhw==}
     peerDependencies:
       '@tiptap/core': ^3.10.3
+
+  '@tiptap/extension-table-cell@3.10.3':
+    resolution: {integrity: sha512-5iY6a5CzQN5HburKownllL5rJIy8uGhS5Is9wBPObi1s8FDPiS86D71wIa5bqpjKWlRUurL6pNqmkJpr4B5s3A==}
+    peerDependencies:
+      '@tiptap/extension-table': ^3.10.3
+
+  '@tiptap/extension-table-header@3.10.3':
+    resolution: {integrity: sha512-UPlAe3hk5tFj5BEpqPGTPNgQlMXVsvFxCCX0h2qsVBja3CT07PHekuxlKgajHUD9YYOLbeJabno+1Hw7q59Lbw==}
+    peerDependencies:
+      '@tiptap/extension-table': ^3.10.3
+
+  '@tiptap/extension-table-row@3.10.3':
+    resolution: {integrity: sha512-quAvalAy+vg7nXkkW4EaG1jaUDRAYVZDY/mIkUsx93geP5V2Tan7M6hTpgQLQOF4ZBEjx7ReS30Xz8QLVnIRUQ==}
+    peerDependencies:
+      '@tiptap/extension-table': ^3.10.3
+
+  '@tiptap/extension-table@3.10.3':
+    resolution: {integrity: sha512-VgDviKqRwOJvv/FLEnmCEuzjH8gn6RqVaMzQrarGXLLfRzhR9BLCW1+jUMeGsSIAqZgTFUWqRwbkmpmnXs8jUA==}
+    peerDependencies:
+      '@tiptap/core': ^3.10.3
+      '@tiptap/pm': ^3.10.3
 
   '@tiptap/extension-text@3.10.3':
     resolution: {integrity: sha512-xhCWXby4F/3jkDmdBvEI1uoz2XQIIVnWYYEwJKICQC33Q5dQ/tGIYLEhGqVbllvcELaz1hYGlKBW0A9JyPce/A==}
@@ -1244,27 +1282,14 @@ packages:
   '@types/json-schema@7.0.15':
     resolution: {integrity: sha512-5+fP8P8MFNC+AyZCDxrB2pkZFPGzqQWUzpSeuuVLvm8VMcorNYavBqoFcxK8bQz4Qsbn4oUEEem4wDLfcysGHA==}
 
-  '@types/linkify-it@3.0.5':
-    resolution: {integrity: sha512-yg6E+u0/+Zjva+buc3EIb+29XEg4wltq7cSmd4Uc2EE/1nUVmxyzpX6gUXD0V8jIrG0r7YeOGVIbYRkxeooCtw==}
-
   '@types/linkify-it@5.0.0':
     resolution: {integrity: sha512-sVDA58zAw4eWAffKOaQH5/5j3XeayukzDk+ewSsnv3p4yJEZHCCzMDiZM8e0OUrRvmpGZ85jf4yDHkHsgBNr9Q==}
-
-  '@types/markdown-it@13.0.9':
-    resolution: {integrity: sha512-1XPwR0+MgXLWfTn9gCsZ55AHOKW1WN+P9vr0PaQh5aerR9LLQXUbjfEAFhjmEmyoYFWAyuN2Mqkn40MZ4ukjBw==}
 
   '@types/markdown-it@14.1.2':
     resolution: {integrity: sha512-promo4eFwuiW+TfGxhi+0x3czqTYJkG8qB17ZUJiVF10Xm7NLVRSLUsfRTU/6h1e24VvRnXCx+hG7li58lkzog==}
 
-  '@types/marked@6.0.0':
-    resolution: {integrity: sha512-jmjpa4BwUsmhxcfsgUit/7A9KbrC48Q0q8KvnY107ogcjGgTFDlIL3RpihNpx2Mu1hM4mdFQjoVc4O6JoGKHsA==}
-    deprecated: This is a stub types definition. marked provides its own type definitions, so you do not need this installed.
-
   '@types/mdast@4.0.4':
     resolution: {integrity: sha512-kGaNbPh1k7AFzgpud/gMdvIm5xuECykRR+JnWKQno9TAXVa6WIVCGTPvYGekIDL4uwCZQSYbUxNBSb1aUo79oA==}
-
-  '@types/mdurl@1.0.5':
-    resolution: {integrity: sha512-6L6VymKTzYSrEf4Nev4Xa1LCHKrlTlYCBMTlQKFuddo1CvQcE52I0mwfOJayueUC7MJuXOeHTcIU683lzd0cUA==}
 
   '@types/mdurl@2.0.0':
     resolution: {integrity: sha512-RGdgjQUZba5p6QEFAVx2OGb8rQDL/cPRG7GiedRzMcJ1tYnUANBncjbSB1NRGwbvjcPeikRABz2nshyPk1bhWg==}
@@ -1813,16 +1838,8 @@ packages:
   magic-string@0.30.21:
     resolution: {integrity: sha512-vd2F4YUyEXKGcLHoq+TEyCjxueSeHnFxyyjNp80yg0XV4vUhnDer/lvvlqM/arB5bXQN5K2/3oinyCRyx8T2CQ==}
 
-  markdown-it-task-lists@2.1.1:
-    resolution: {integrity: sha512-TxFAc76Jnhb2OUu+n3yz9RMu4CwGfaT788br6HhEDlvWfdeJcLUsxk1Hgw2yJio0OXsxv7pyIPmvECY7bMbluA==}
-
   markdown-it@14.1.0:
     resolution: {integrity: sha512-a54IwgWPaeBCAAsv13YgmALOF1elABB08FxO9i+r4VFk5Vl4pKokRPeX8u5TCgSsPi6ec1otfLjdOpVcgbpshg==}
-    hasBin: true
-
-  marked@17.0.0:
-    resolution: {integrity: sha512-KkDYEWEEiYJw/KC+DVm1zzlpMQSMIu6YRltkcCvwheCp8HWPXCk9JwOmHJKBlGfzcpzcIt6x3sMnTsRm/51oDg==}
-    engines: {node: '>= 20'}
     hasBin: true
 
   mdast-util-from-markdown@2.0.2:
@@ -2167,11 +2184,6 @@ packages:
   tinyglobby@0.2.15:
     resolution: {integrity: sha512-j2Zq4NyQYG5XMST4cbs02Ak8iJUdxRM0XI5QyxXuZOzKOINmWurp3smXu3y5wDcJrptwpSjgXHzIQxR0omXljQ==}
     engines: {node: '>=12.0.0'}
-
-  tiptap-markdown@0.9.0:
-    resolution: {integrity: sha512-dKLQ9iiuGNgrlGVjrNauF/UBzWu4LYOx5pkD0jNkmQt/GOwfCJsBuzZTsf1jZ204ANHOm572mZ9PYvGh1S7tpQ==}
-    peerDependencies:
-      '@tiptap/core': ^3.0.1
 
   to-regex-range@5.0.1:
     resolution: {integrity: sha512-65P7iz6X5yEr1cwcgvQxbbIw7Uk3gOy5dIdtZ4rDveLqhrdJP+Li/Hx6tyK0NEb+2GCyneCMJiGqrADCSNk8sQ==}
@@ -3167,6 +3179,10 @@ snapshots:
       '@tiptap/core': 3.10.3(@tiptap/pm@3.10.3)
       '@tiptap/pm': 3.10.3
 
+  '@tiptap/extension-image@3.10.3(@tiptap/core@3.10.3(@tiptap/pm@3.10.3))':
+    dependencies:
+      '@tiptap/core': 3.10.3(@tiptap/pm@3.10.3)
+
   '@tiptap/extension-italic@3.10.3(@tiptap/core@3.10.3(@tiptap/pm@3.10.3))':
     dependencies:
       '@tiptap/core': 3.10.3(@tiptap/pm@3.10.3)
@@ -3205,6 +3221,23 @@ snapshots:
   '@tiptap/extension-strike@3.10.3(@tiptap/core@3.10.3(@tiptap/pm@3.10.3))':
     dependencies:
       '@tiptap/core': 3.10.3(@tiptap/pm@3.10.3)
+
+  '@tiptap/extension-table-cell@3.10.3(@tiptap/extension-table@3.10.3(@tiptap/core@3.10.3(@tiptap/pm@3.10.3))(@tiptap/pm@3.10.3))':
+    dependencies:
+      '@tiptap/extension-table': 3.10.3(@tiptap/core@3.10.3(@tiptap/pm@3.10.3))(@tiptap/pm@3.10.3)
+
+  '@tiptap/extension-table-header@3.10.3(@tiptap/extension-table@3.10.3(@tiptap/core@3.10.3(@tiptap/pm@3.10.3))(@tiptap/pm@3.10.3))':
+    dependencies:
+      '@tiptap/extension-table': 3.10.3(@tiptap/core@3.10.3(@tiptap/pm@3.10.3))(@tiptap/pm@3.10.3)
+
+  '@tiptap/extension-table-row@3.10.3(@tiptap/extension-table@3.10.3(@tiptap/core@3.10.3(@tiptap/pm@3.10.3))(@tiptap/pm@3.10.3))':
+    dependencies:
+      '@tiptap/extension-table': 3.10.3(@tiptap/core@3.10.3(@tiptap/pm@3.10.3))(@tiptap/pm@3.10.3)
+
+  '@tiptap/extension-table@3.10.3(@tiptap/core@3.10.3(@tiptap/pm@3.10.3))(@tiptap/pm@3.10.3)':
+    dependencies:
+      '@tiptap/core': 3.10.3(@tiptap/pm@3.10.3)
+      '@tiptap/pm': 3.10.3
 
   '@tiptap/extension-text@3.10.3(@tiptap/core@3.10.3(@tiptap/pm@3.10.3))':
     dependencies:
@@ -3317,29 +3350,16 @@ snapshots:
 
   '@types/json-schema@7.0.15': {}
 
-  '@types/linkify-it@3.0.5': {}
-
   '@types/linkify-it@5.0.0': {}
-
-  '@types/markdown-it@13.0.9':
-    dependencies:
-      '@types/linkify-it': 3.0.5
-      '@types/mdurl': 1.0.5
 
   '@types/markdown-it@14.1.2':
     dependencies:
       '@types/linkify-it': 5.0.0
       '@types/mdurl': 2.0.0
 
-  '@types/marked@6.0.0':
-    dependencies:
-      marked: 17.0.0
-
   '@types/mdast@4.0.4':
     dependencies:
       '@types/unist': 3.0.3
-
-  '@types/mdurl@1.0.5': {}
 
   '@types/mdurl@2.0.0': {}
 
@@ -3887,8 +3907,6 @@ snapshots:
     dependencies:
       '@jridgewell/sourcemap-codec': 1.5.5
 
-  markdown-it-task-lists@2.1.1: {}
-
   markdown-it@14.1.0:
     dependencies:
       argparse: 2.0.1
@@ -3897,8 +3915,6 @@ snapshots:
       mdurl: 2.0.0
       punycode.js: 2.3.1
       uc.micro: 2.1.0
-
-  marked@17.0.0: {}
 
   mdast-util-from-markdown@2.0.2:
     dependencies:
@@ -4379,14 +4395,6 @@ snapshots:
     dependencies:
       fdir: 6.5.0(picomatch@4.0.3)
       picomatch: 4.0.3
-
-  tiptap-markdown@0.9.0(@tiptap/core@3.10.3(@tiptap/pm@3.10.3)):
-    dependencies:
-      '@tiptap/core': 3.10.3(@tiptap/pm@3.10.3)
-      '@types/markdown-it': 13.0.9
-      markdown-it: 14.1.0
-      markdown-it-task-lists: 2.1.1
-      prosemirror-markdown: 1.13.2
 
   to-regex-range@5.0.1:
     dependencies:
