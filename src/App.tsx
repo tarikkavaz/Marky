@@ -14,7 +14,7 @@ function App() {
     hasUnsavedChanges: false,
   });
 
-  const [showToolbar, setShowToolbar] = useState(true);
+  const [showToolbar, setShowToolbar] = useState(false);
   const [editor, setEditor] = useState<TipTapEditor | null>(null);
 
   // Undo/Redo history
@@ -186,11 +186,12 @@ function App() {
   }, []);
 
   return (
-    <div className="flex flex-col h-screen w-screen bg-background text-foreground">
-      {/* Header with window controls */}
-      <header className="flex items-center justify-between border-b border-border py-2" data-tauri-drag-region>
-        <WindowControls />
-        <div className="flex items-center gap-2 px-4" data-tauri-drag-region>
+    <div className="w-screen h-screen flex items-center justify-center bg-transparent">
+      <div className="flex flex-col w-[calc(100%-8px)] h-[calc(100%-8px)] bg-stone-950/95 backdrop-blur-xl text-foreground rounded-2xl overflow-hidden shadow-2xl border border-stone-800">
+        {/* Header with window controls */}
+        <header className="flex items-center justify-between border-b border-border py-2" data-tauri-drag-region>
+          <WindowControls />
+          <div className="flex items-center gap-2 px-4" data-tauri-drag-region>
           <Button
             variant={showToolbar ? 'default' : 'ghost'}
             size="sm"
@@ -254,7 +255,8 @@ function App() {
           onChange={handleContentChange}
           onEditorReady={setEditor}
         />
-      </main>
+        </main>
+      </div>
     </div>
   );
 }

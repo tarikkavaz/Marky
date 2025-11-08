@@ -44,71 +44,72 @@
 
 :root {
   --radius: 0.625rem;
-  --background: var(--color-slate-950);
-  --foreground: var(--color-slate-50);
-  --card: var(--color-slate-900);
-  --card-foreground: var(--color-slate-50);
-  --popover: var(--color-slate-900);
-  --popover-foreground: var(--color-slate-50);
-  --primary: var(--color-slate-200);
-  --primary-foreground: var(--color-slate-950);
-  --secondary: var(--color-slate-800);
-  --secondary-foreground: var(--color-slate-50);
-  --muted: var(--color-slate-900);
-  --muted-foreground: var(--color-slate-400);
-  --accent: var(--color-slate-800);
-  --accent-foreground: var(--color-slate-50);
+  --background: var(--color-stone-950);
+  --foreground: var(--color-stone-50);
+  --card: var(--color-stone-900);
+  --card-foreground: var(--color-stone-50);
+  --popover: var(--color-stone-900);
+  --popover-foreground: var(--color-stone-50);
+  --primary: var(--color-stone-200);
+  --primary-foreground: var(--color-stone-950);
+  --secondary: var(--color-stone-800);
+  --secondary-foreground: var(--color-stone-50);
+  --muted: var(--color-stone-900);
+  --muted-foreground: var(--color-stone-400);
+  --accent: var(--color-stone-800);
+  --accent-foreground: var(--color-stone-50);
   --destructive: var(--color-red-600);
-  --border: var(--color-slate-800);
-  --input: var(--color-slate-900);
-  --ring: var(--color-slate-500);
+  --border: var(--color-stone-800);
+  --input: var(--color-stone-900);
+  --ring: var(--color-stone-500);
   --chart-1: var(--color-orange-500);
   --chart-2: var(--color-blue-500);
   --chart-3: var(--color-violet-500);
   --chart-4: var(--color-yellow-500);
   --chart-5: var(--color-amber-500);
-  --sidebar: var(--color-slate-900);
-  --sidebar-foreground: var(--color-slate-50);
-  --sidebar-primary: var(--color-slate-200);
-  --sidebar-primary-foreground: var(--color-slate-950);
-  --sidebar-accent: var(--color-slate-800);
-  --sidebar-accent-foreground: var(--color-slate-50);
-  --sidebar-border: var(--color-slate-800);
-  --sidebar-ring: var(--color-slate-500);
+  --sidebar: var(--color-stone-900);
+  --sidebar-foreground: var(--color-stone-50);
+  --sidebar-primary: var(--color-stone-200);
+  --sidebar-primary-foreground: var(--color-stone-950);
+  --sidebar-accent: var(--color-stone-800);
+  --sidebar-accent-foreground: var(--color-stone-50);
+  --sidebar-border: var(--color-stone-800);
+  --sidebar-ring: var(--color-stone-500);
 }
 
 .dark {
-  --background: var(--color-slate-950);
-  --foreground: var(--color-slate-50);
-  --card: var(--color-slate-900);
-  --card-foreground: var(--color-slate-50);
-  --popover: var(--color-slate-900);
-  --popover-foreground: var(--color-slate-50);
-  --primary: var(--color-slate-200);
-  --primary-foreground: var(--color-slate-950);
-  --secondary: var(--color-slate-800);
-  --secondary-foreground: var(--color-slate-50);
-  --muted: var(--color-slate-900);
-  --muted-foreground: var(--color-slate-400);
-  --accent: var(--color-slate-800);
-  --accent-foreground: var(--color-slate-50);
+  --background: var(--color-stone-950);
+  --foreground: var(--color-stone-50);
+  --card: var(--color-stone-900);
+  --card-foreground: var(--color-stone-50);
+  --popover: var(--color-stone-900);
+  --popover-foreground: var(--color-stone-50);
+  --primary: var(--color-stone-200);
+  --primary-foreground: var(--color-stone-950);
+  --secondary: var(--color-stone-800);
+  --secondary-foreground: var(--color-stone-50);
+  --muted: var(--color-stone-900);
+  --muted-foreground: var(--color-stone-400);
+  --accent: var(--color-stone-800);
+  --accent-foreground: var(--color-stone-50);
   --destructive: var(--color-red-600);
-  --border: var(--color-slate-800);
-  --input: var(--color-slate-900);
-  --ring: var(--color-slate-500);
+  --border: var(--color-stone-800);
+  --input: var(--color-stone-900);
+  --ring: var(--color-stone-500);
   --chart-1: var(--color-orange-500);
   --chart-2: var(--color-blue-500);
   --chart-3: var(--color-violet-500);
   --chart-4: var(--color-yellow-500);
   --chart-5: var(--color-amber-500);
-  --sidebar: var(--color-slate-900);
-  --sidebar-foreground: var(--color-slate-50);
-  --sidebar-primary: var(--color-slate-200);
-  --sidebar-primary-foreground: var(--color-slate-950);
-  --sidebar-accent: var(--color-slate-800);
-  --sidebar-accent-foreground: var(--color-slate-50);
-  --sidebar-border: var(--color-slate-800);
-  --sidebar-ring: var(--color-slate-500);
+  --sidebar: var(--color-stone-900);
+  --sidebar-foreground: var(--color-stone-50);
+  --sidebar-primary: var(--color-stone-200);
+  --sidebar-primary-foreground: var(--color-stone-950);
+  --sidebar-accent: var(--color-stone-800);
+  --sidebar-accent-foreground: var(--color-stone-50);
+  --sidebar-border: var(--color-stone-800);
+  --sidebar-ring: var(--color-stone-500);
+  background: transparent !important;
 }
 
 @layer base {
@@ -117,17 +118,24 @@
   }
   html {
     color-scheme: dark;
+    background: transparent !important;
+    background-color: transparent !important;
   }
+  html,
   body {
-    @apply bg-background text-foreground;
+    @apply text-foreground;
     margin: 0;
     padding: 0;
     overflow: hidden;
+    background: transparent !important;
+    background-color: transparent !important;
   }
   #root {
     width: 100vw;
     height: 100vh;
     overflow: hidden;
+    background: transparent !important;
+    background-color: transparent !important;
   }
 }
 
@@ -140,7 +148,7 @@
   .ProseMirror p.is-editor-empty:first-child::before {
     content: attr(data-placeholder);
     float: left;
-    color: var(--color-slate-600);
+    color: var(--color-stone-600);
     pointer-events: none;
     height: 0;
   }
@@ -175,14 +183,14 @@
   }
   
   .ProseMirror code {
-    background-color: var(--color-slate-800);
+    background-color: var(--color-stone-800);
     border-radius: 0.25rem;
     padding: 0.125rem 0.25rem;
     font-family: 'Courier New', Courier, monospace;
   }
   
   .ProseMirror pre {
-    background-color: var(--color-slate-900);
+    background-color: var(--color-stone-900);
     border-radius: 0.5rem;
     padding: 1rem;
     overflow-x: auto;
@@ -207,7 +215,7 @@
   }
   
   .ProseMirror blockquote {
-    border-left: 3px solid var(--color-slate-700);
+    border-left: 3px solid var(--color-stone-700);
     padding-left: 1rem;
     margin-left: 0;
     font-style: italic;
@@ -223,7 +231,7 @@
 
   .ProseMirror table td,
   .ProseMirror table th {
-    border: 2px solid var(--color-slate-700);
+    border: 2px solid var(--color-stone-700);
     box-sizing: border-box;
     min-width: 1em;
     padding: 0.5rem;
@@ -234,7 +242,7 @@
   .ProseMirror table th {
     font-weight: bold;
     text-align: left;
-    background-color: var(--color-slate-900);
+    background-color: var(--color-stone-900);
   }
 
   .ProseMirror table .selectedCell:after {
@@ -245,7 +253,7 @@
     right: 0;
     top: 0;
     bottom: 0;
-    background: color-mix(in srgb, var(--color-slate-700) 30%, transparent);
+    background: color-mix(in srgb, var(--color-stone-700) 30%, transparent);
     pointer-events: none;
   }
 
@@ -255,7 +263,7 @@
     top: 0;
     bottom: -2px;
     width: 4px;
-    background-color: var(--color-slate-500);
+    background-color: var(--color-stone-500);
     pointer-events: none;
   }
 
