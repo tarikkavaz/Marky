@@ -187,10 +187,16 @@ function App() {
 
   return (
     <div className="w-screen h-screen flex items-center justify-center bg-transparent">
-      <div className="flex flex-col w-[calc(100%-8px)] h-[calc(100%-8px)] bg-ui-window backdrop-blur-2xl text-foreground rounded-xl overflow-hidden shadow-2xl border border-ui-window">
+      <div className="flex flex-col w-[calc(100%-8px)] h-[calc(100%-8px)] bg-ui-window backdrop-blur-2xl text-foreground rounded-lg overflow-hidden shadow-2xl border border-ui-window">
         {/* Header with window controls */}
         <header className="flex items-center justify-between border-b border-border py-2" data-tauri-drag-region>
-          <WindowControls />
+          <div className="flex items-center gap-3 px-4" data-tauri-drag-region>
+            <WindowControls />
+            <div className="flex items-center gap-2" data-tauri-drag-region>
+              <img src="/logo.png" alt="Marky" className="size-8" data-tauri-drag-region />
+              <span className="text-sm font-semibold text-foreground select-none cursor-default" data-tauri-drag-region>Marky</span>
+            </div>
+          </div>
           <div className="flex items-center gap-2 px-4" data-tauri-drag-region>
           <Button
             variant={showToolbar ? 'default' : 'ghost'}
