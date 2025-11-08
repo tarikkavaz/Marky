@@ -17,6 +17,7 @@ import {
   Undo,
   Redo,
 } from 'lucide-react';
+import { readFile } from '@tauri-apps/plugin-fs';
 import { InputDialog } from './InputDialog';
 import { useState, useEffect } from 'react';
 import { open, message } from '@tauri-apps/plugin-dialog';
@@ -87,7 +88,6 @@ export function Toolbar({ editor, currentFilePath }: ToolbarProps) {
       
       if (filePath && typeof filePath === 'string') {
         // Read the image and convert to base64 for display
-        const { readFile } = await import('@tauri-apps/plugin-fs');
         const imageData = await readFile(filePath);
         
         // Detect image type from extension

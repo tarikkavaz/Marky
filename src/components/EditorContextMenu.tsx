@@ -25,6 +25,7 @@ import {
   Redo,
 } from 'lucide-react';
 import { open, message } from '@tauri-apps/plugin-dialog';
+import { readFile } from '@tauri-apps/plugin-fs';
 import { saveImageForMarkdown } from '../lib/imageHandler';
 import { useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
@@ -84,7 +85,6 @@ export function EditorContextMenu({
 
       if (filePath && typeof filePath === 'string') {
         // Read the image and convert to base64 for display
-        const { readFile } = await import('@tauri-apps/plugin-fs');
         const imageData = await readFile(filePath);
         
         // Detect image type from extension

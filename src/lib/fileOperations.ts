@@ -1,5 +1,5 @@
 import { open, save } from '@tauri-apps/plugin-dialog';
-import { readTextFile, writeTextFile } from '@tauri-apps/plugin-fs';
+import { readTextFile, writeTextFile, readFile } from '@tauri-apps/plugin-fs';
 import { dirname } from '@tauri-apps/api/path';
 import TurndownService from 'turndown';
 import { tables } from 'turndown-plugin-gfm';
@@ -163,7 +163,6 @@ async function convertImagePathsToUrls(html: string, _markdownPath: string): Pro
     
     // Convert to base64 data URL but preserve original path in data attribute
     try {
-      const { readFile } = await import('@tauri-apps/plugin-fs');
       const imageData = await readFile(src);
       
       // Detect image type from extension
