@@ -201,10 +201,10 @@
     /* Editor spacing */
     --editor-list-padding: 1.5rem;
     --editor-blockquote-border: 3px;
-    --editor-table-border: 2px;
+    --editor-table-border: 1px;
     --editor-table-cell-padding-y: 0.25rem;
     --editor-table-cell-padding-x: 0.5rem;
-    --editor-table-paragraph-margin: 0.5em;
+    --editor-table-paragraph-margin: 0;
     
     /* Inline code */
     --editor-inline-code-radius: 0.25rem;
@@ -297,22 +297,28 @@
 
   .ProseMirror table td,
   .ProseMirror table th {
-    border: var(--editor-table-border) solid var(--color-gray-700);
+    border: var(--editor-table-border) solid var(--color-gray-800);
     box-sizing: border-box;
     min-width: 1em;
-    padding: var(--editor-table-cell-padding-y) var(--editor-table-cell-padding-x);
+    padding: var(--editor-table-cell-padding-y) var(--editor-table-cell-padding-x) !important;
+    padding-left: var(--editor-table-cell-padding-x) !important;
+    padding-right: var(--editor-table-cell-padding-x) !important;
+    padding-inline-start: var(--editor-table-cell-padding-x) !important;
+    padding-inline-end: var(--editor-table-cell-padding-x) !important;
     position: relative;
     vertical-align: top;
+    text-align: left;
   }
 
   .ProseMirror table td p,
   .ProseMirror table th p {
     margin: var(--editor-table-paragraph-margin) !important;
+    padding: 0 !important;
+    text-align: left;
   }
 
   .ProseMirror table th {
     font-weight: var(--editor-heading-weight);
-    text-align: left;
     background-color: var(--color-gray-900);
   }
 
@@ -342,6 +348,7 @@
     text-decoration: underline;
   }
 
+  /* Blink Outline Animation for Unsaved Changes */
   .animate-blink-outline {
     animation: blink-outline 2.5s ease-in-out infinite;
     border-radius: 0.375rem;
