@@ -335,7 +335,7 @@ function App() {
       <div className="flex flex-col w-full h-full rounded-2xl shadow-2xl overflow-hidden">
         {/* Header with native window controls */}
         <header
-          className="flex items-center justify-between border-b border-ui-window bg-background py-2 px-4 min-h-14 pl-20"
+          className="flex items-center justify-between border-b border-ui-window bg-background py-2 px-4 min-h-14"
           data-tauri-drag-region
         >
           <div className="flex items-center gap-2" data-tauri-drag-region>
@@ -345,16 +345,6 @@ function App() {
               data-tauri-drag-region
             >
               Marky
-            </span>
-          </div>
-          <div className="flex-1 flex items-center justify-center" data-tauri-drag-region>
-            <span
-              className={`text-sm select-none cursor-default ${
-                fileState.hasUnsavedChanges ? 'text-yellow-500' : 'text-muted-foreground'
-              }`}
-              data-tauri-drag-region
-            >
-              {fileState.path ? fileState.path.split(/[/\\]/).pop() : 'Untitled'}
             </span>
           </div>
           <div className="flex items-center gap-2" data-tauri-drag-region>

@@ -60,8 +60,8 @@ class WindowManager {
         transparent: true,
         center: true,
         resizable: true,
-        titleBarStyle: 'Overlay',
-        hiddenTitle: true,
+        titleBarStyle: 'Visible',
+        hiddenTitle: false,
       });
 
       // Wait for window to be created
