@@ -1,0 +1,87 @@
+@layer components {
+  /* UI Color Utilities */
+  .bg-ui-window {
+    background-color: var(--ui-window-bg);
+  }
+  
+  .border-ui-window {
+    border-color: var(--ui-window-border);
+  }
+  
+  .bg-ui-dropdown {
+    background-color: var(--ui-dropdown-bg);
+  }
+  
+  .text-ui-dropdown {
+    color: var(--ui-dropdown-fg);
+  }
+  
+  .hover\:bg-ui-dropdown-hover:hover {
+    background-color: var(--ui-dropdown-hover);
+  }
+  
+  .bg-ui-dropdown-active {
+    background-color: var(--ui-dropdown-active);
+  }
+  
+  .border-ui-dropdown {
+    border-color: var(--ui-dropdown-border);
+  }
+
+  /* Blink Outline Animation for Unsaved Changes */
+  .animate-blink-outline {
+    animation: blink-outline 2.5s ease-in-out infinite;
+    border-radius: 0.375rem;
+  }
+
+  /* Table and Code Block Border Selection Styles */
+  .table-wrapper {
+    position: relative;
+    padding: 4px 8px;
+    margin: 0.5rem 0;
+    transition: outline 0.15s ease-in-out;
+  }
+
+  .code-block-wrapper {
+    position: relative;
+    padding: 4px 8px;
+    margin: 0.5rem 0;
+    transition: outline 0.15s ease-in-out;
+  }
+
+  .table-content-wrapper,
+  .code-block-content-wrapper {
+    position: relative;
+  }
+
+  /* Gray outline on border hover */
+  .table-wrapper[data-hovering-border="true"],
+  .code-block-wrapper[data-hovering-border="true"] {
+    outline: 1px solid var(--color-gray-600);
+    border-radius: 10px;
+    outline-offset: -1px;
+    cursor: pointer;
+  }
+
+  /* Blue thicker outline when selected */
+  .table-wrapper[data-selected="true"],
+  .code-block-wrapper[data-selected="true"] {
+    outline: 3px solid var(--color-blue-500);
+    border-radius: 10px;
+    outline-offset: -3px;
+    cursor: pointer;
+  }
+
+  /* Ensure content is editable */
+  .table-wrapper table,
+  .code-block-wrapper pre {
+    pointer-events: auto;
+    margin: 2px !important;
+  }
+
+  /* Prevent wrapper from blocking clicks inside content */
+  .table-wrapper[data-selected="true"] .table-content-wrapper,
+  .code-block-wrapper[data-selected="true"] .code-block-content-wrapper {
+    pointer-events: auto;
+  }
+}

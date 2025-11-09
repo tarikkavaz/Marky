@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Editor } from './components/Editor';
-import { Toolbar } from './components/Toolbar';
+import { Editor } from './components/editor/Editor';
+import { Toolbar } from './components/toolbar';
 
 import {
   openFile,
@@ -12,7 +12,7 @@ import {
 } from './lib/fileOperations';
 import { windowManager, getCurrentWindowLabel, closeCurrentWindow } from './lib/windowManager';
 import { Button } from './components/ui/button';
-import { UnsavedChangesDialog } from './components/UnsavedChangesDialog';
+import { UnsavedChangesDialog } from './components/dialogs/UnsavedChangesDialog';
 import {
   DropdownMenu,
   DropdownMenuContent,

@@ -1,0 +1,10 @@
+@keyframes blink-outline {
+  0%, 100% {
+    outline: 1px solid oklch(79.5% 0.184 86.047 / 0.5);
+    outline-offset: 0px;
+  }
+  50% {
+    outline: 1px solid oklch(79.5% 0.184 86.047 / 0.1);
+    outline-offset: 0px;
+  }
+}
