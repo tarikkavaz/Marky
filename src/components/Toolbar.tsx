@@ -7,6 +7,9 @@ import {
   Heading1,
   Heading2,
   Heading3,
+  Heading4,
+  Heading5,
+  Heading6,
   Image,
   Table,
   Link,
@@ -64,7 +67,7 @@ export function Toolbar({ editor }: ToolbarProps) {
   const toggleUnderline = () => editor.chain().focus().toggleUnderline().run();
   const toggleCode = () => editor.chain().focus().toggleCode().run();
   const toggleCodeBlock = () => editor.chain().focus().toggleCodeBlock().run();
-  const toggleHeading = (level: 1 | 2 | 3) => 
+  const toggleHeading = (level: 1 | 2 | 3 | 4 | 5 | 6) => 
     editor.chain().focus().toggleHeading({ level }).run();
   const toggleBulletList = () => editor.chain().focus().toggleBulletList().run();
   const toggleOrderedList = () => editor.chain().focus().toggleOrderedList().run();
@@ -259,6 +262,33 @@ export function Toolbar({ editor }: ToolbarProps) {
           title="Heading 3"
         >
           <Heading3 className="h-4 w-4" />
+        </Button>
+        <Button
+          variant={isActive('heading', { level: 4 }) ? 'default' : 'ghost'}
+          size="sm"
+          onClick={() => toggleHeading(4)}
+          className="h-8 w-8 p-0"
+          title="Heading 4"
+        >
+          <Heading4 className="h-4 w-4" />
+        </Button>
+        <Button
+          variant={isActive('heading', { level: 5 }) ? 'default' : 'ghost'}
+          size="sm"
+          onClick={() => toggleHeading(5)}
+          className="h-8 w-8 p-0"
+          title="Heading 5"
+        >
+          <Heading5 className="h-4 w-4" />
+        </Button>
+        <Button
+          variant={isActive('heading', { level: 6 }) ? 'default' : 'ghost'}
+          size="sm"
+          onClick={() => toggleHeading(6)}
+          className="h-8 w-8 p-0"
+          title="Heading 6"
+        >
+          <Heading6 className="h-4 w-4" />
         </Button>
       </div>
 

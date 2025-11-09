@@ -1,5 +1,6 @@
 import { WebviewWindow, getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow';
 import { invoke } from '@tauri-apps/api/core';
+import { ask } from '@tauri-apps/plugin-dialog';
 
 interface WindowInfo {
   label: string;
@@ -179,13 +180,24 @@ export async function getCurrentWindowLabel(): Promise<string> {
   return currentWindow.label;
 }
 
-export async function closeCurrentWindow(hasUnsavedChanges: boolean): Promise<boolean> {
+export async function closeCurrentWindow(hasUnsavedChanges: boolean, onSave?: () => Promise<void>): Promise<boolean> {
   const currentWindow = getCurrentWebviewWindow();
   
   if (hasUnsavedChanges) {
     // Show confirmation dialog
-    const confirmed = await invoke<boolean>('show_close_confirmation');
-    if (!confirmed) {
+    const shouldSave = await ask(
+      'You have unsaved changes. Do you want to save them before closing?',
+      {
+        title: 'Unsaved Changes',
+        kind: 'warning',
+      }
+    );
+
+    if (shouldSave && onSave) {
+      // Save the file first
+      await onSave();
+    } else if (shouldSave && !onSave) {
+      // User wants to save but no save function provided, cancel close
       return false;
     }
   }

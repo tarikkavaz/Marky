@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Editor } from './components/Editor';
 import { Toolbar } from './components/Toolbar';
 
@@ -12,12 +12,14 @@ import {
 } from './lib/fileOperations';
 import { windowManager, getCurrentWindowLabel, closeCurrentWindow } from './lib/windowManager';
 import { Button } from './components/ui/button';
+import { UnsavedChangesDialog } from './components/UnsavedChangesDialog';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
   DropdownMenuSeparator,
+  DropdownMenuShortcut,
 } from './components/ui/dropdown-menu';
 import { Pencil, FolderOpen, Save, SaveAll, FileCode, FilePlus, X, LayoutGrid } from 'lucide-react';
 import { type Editor as TipTapEditor } from '@tiptap/react';
@@ -35,6 +37,23 @@ function App() {
   const [editor, setEditor] = useState<TipTapEditor | null>(null);
   const [windowLabel, setWindowLabel] = useState<string>('');
   const [windowsMenu, setWindowsMenu] = useState<Array<{ label: string; title: string }>>([]);
+  const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
+  const [pendingAction, setPendingAction] = useState<'close' | 'open' | null>(null);
+
+  // Use ref to track current unsaved changes state for the close handler
+  const hasUnsavedChangesRef = useRef(fileState.hasUnsavedChanges);
+  const fileStateRef = useRef(fileState);
+  const editorRef = useRef(editor);
+
+  // Update refs whenever state changes
+  useEffect(() => {
+    hasUnsavedChangesRef.current = fileState.hasUnsavedChanges;
+    fileStateRef.current = fileState;
+  }, [fileState]);
+
+  useEffect(() => {
+    editorRef.current = editor;
+  }, [editor]);
 
   // Initialize window and load file from URL params
   useEffect(() => {
@@ -51,7 +70,7 @@ function App() {
         const params = new URLSearchParams(window.location.search);
         const filePath = params.get('file');
         const isRestore = params.get('restore') === 'true';
-        
+
         if (filePath) {
           // Load file from path
           const result = await loadFileFromPath(filePath);
@@ -70,13 +89,10 @@ function App() {
 
         // Setup close request handler
         await currentWindow.onCloseRequested(async (event) => {
-          if (fileState.hasUnsavedChanges) {
+          if (hasUnsavedChangesRef.current) {
             event.preventDefault();
-            const shouldClose = await closeCurrentWindow(true);
-            if (shouldClose) {
-              await windowManager.saveWindowSession();
-              await currentWindow.close();
-            }
+            setPendingAction('close');
+            setShowUnsavedDialog(true);
           } else {
             await windowManager.closeWindow(label);
             await windowManager.saveWindowSession();
@@ -93,7 +109,7 @@ function App() {
     }
 
     initWindow();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, []);
 
   const updateWindowsMenu = async () => {
@@ -108,6 +124,13 @@ function App() {
 
   const handleOpen = async () => {
     try {
+      // Check if there are unsaved changes
+      if (fileState.hasUnsavedChanges) {
+        setPendingAction('open');
+        setShowUnsavedDialog(true);
+        return;
+      }
+
       const result = await openFile();
       if (result) {
         setFileState({
@@ -122,6 +145,21 @@ function App() {
       }
     } catch (error) {
       console.error('Failed to open file:', error);
+    }
+  };
+
+  const executeOpen = async () => {
+    const result = await openFile();
+    if (result) {
+      setFileState({
+        path: result.path,
+        content: result.content,
+        hasUnsavedChanges: false,
+      });
+      // Update window title
+      if (windowLabel) {
+        await windowManager.updateWindowTitle(windowLabel, result.path);
+      }
     }
   };
 
@@ -146,10 +184,25 @@ function App() {
 
   const handleCloseWindow = async () => {
     try {
-      await closeCurrentWindow(fileState.hasUnsavedChanges);
+      if (fileState.hasUnsavedChanges) {
+        setPendingAction('close');
+        setShowUnsavedDialog(true);
+      } else {
+        await closeCurrentWindow(false);
+      }
     } catch (error) {
       console.error('Failed to close window:', error);
     }
+  };
+
+  const executeClose = async () => {
+    // Clear unsaved changes flag BEFORE closing to prevent onCloseRequested from blocking
+    hasUnsavedChangesRef.current = false;
+    setFileState(prev => ({ ...prev, hasUnsavedChanges: false }));
+    await windowManager.closeWindow(windowLabel);
+    await windowManager.saveWindowSession();
+    const currentWindow = getCurrentWebviewWindow();
+    await currentWindow.close();
   };
 
   const handleSave = async () => {
@@ -158,6 +211,7 @@ function App() {
       const currentContent = editor?.getHTML() || fileState.content;
       const savedPath = await saveFile(currentContent, fileState.path);
       if (savedPath) {
+        hasUnsavedChangesRef.current = false;
         setFileState(prev => ({
           ...prev,
           path: savedPath,
@@ -180,6 +234,7 @@ function App() {
       const currentContent = editor?.getHTML() || fileState.content;
       const savedPath = await saveFileAs(currentContent);
       if (savedPath) {
+        hasUnsavedChangesRef.current = false;
         setFileState(prev => ({
           ...prev,
           path: savedPath,
@@ -206,17 +261,13 @@ function App() {
     }
   };
 
-  const handleContentChange = useCallback(
-    (newContent: string) => {
-      setFileState(prev => ({
-        ...prev,
-        content: newContent,
-        hasUnsavedChanges: prev.content !== newContent && (prev.path !== null || newContent !== ''),
-      }));
-    },
-    []
-  );
-
+  const handleContentChange = useCallback((newContent: string) => {
+    setFileState(prev => ({
+      ...prev,
+      content: newContent,
+      hasUnsavedChanges: prev.content !== newContent && (prev.path !== null || newContent !== ''),
+    }));
+  }, []);
 
   // Keyboard shortcuts (excluding undo/redo which TipTap handles natively)
   useEffect(() => {
@@ -225,6 +276,9 @@ function App() {
         e.preventDefault();
         handleNewWindow();
       } else if ((e.metaKey || e.ctrlKey) && e.key === 'w') {
+        e.preventDefault();
+        handleCloseWindow();
+      } else if ((e.metaKey || e.ctrlKey) && e.key === 'q') {
         e.preventDefault();
         handleCloseWindow();
       } else if ((e.metaKey || e.ctrlKey) && e.key === 'o') {
@@ -241,7 +295,7 @@ function App() {
         } else {
           handleSave();
         }
-      } else if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'E') {
+      } else if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === 'e') {
         e.preventDefault();
         handleExport();
       }
@@ -272,12 +326,12 @@ function App() {
           </div>
           <div className="flex-1 flex items-center justify-center" data-tauri-drag-region>
             <span
-              className="text-sm text-muted-foreground select-none cursor-default"
+              className={`text-sm select-none cursor-default ${
+                fileState.hasUnsavedChanges ? 'text-yellow-500' : 'text-muted-foreground'
+              }`}
               data-tauri-drag-region
             >
-              {fileState.path
-                ? fileState.path.split(/[/\\]/).pop()
-                : 'Untitled'}
+              {fileState.path ? fileState.path.split(/[/\\]/).pop() : 'Untitled'}
             </span>
           </div>
           <div className="flex items-center gap-2" data-tauri-drag-region>
@@ -290,47 +344,6 @@ function App() {
             >
               <Pencil className="h-4 w-4" />
             </Button>
-            <div className="w-px h-6 bg-border" />
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  title="Window Controls"
-                  className="h-8 w-8 p-0"
-                >
-                  <LayoutGrid className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={handleNewWindow}>
-                  <FilePlus className="h-4 w-4 mr-2" />
-                  New Window
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={handleOpen}>
-                  <FolderOpen className="h-4 w-4 mr-2" />
-                  Open
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={handleOpenInNewWindow}>
-                  <FolderOpen className="h-4 w-4 mr-2" />
-                  Open in New Window
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={handleExport}>
-                  <FileCode className="h-4 w-4 mr-2" />
-                  Export
-                </DropdownMenuItem>
-                {windowsMenu.length > 0 && <DropdownMenuSeparator />}
-                {windowsMenu.map((win) => (
-                  <DropdownMenuItem
-                    key={win.label}
-                    onClick={() => windowManager.focusWindow(win.label)}
-                    className={win.label === windowLabel ? 'bg-accent' : ''}
-                  >
-                    {win.title}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
             <div className="w-px h-6 bg-border" />
             <Button
               variant="ghost"
@@ -349,7 +362,7 @@ function App() {
               size="sm"
               onClick={handleSaveAs}
               title="Save As (Cmd+Shift+S)"
-              className="h-8 w-8 p-0"
+              className="h-8 w-8 p-0 hidden"
             >
               <SaveAll className="h-4 w-4" />
             </Button>
@@ -362,6 +375,62 @@ function App() {
             >
               <X className="h-4 w-4" />
             </Button>
+            <div className="w-px h-6 bg-border" />
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" title="Window Controls" className="h-8 w-8 p-0">
+                  <LayoutGrid className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuItem onClick={handleNewWindow}>
+                  <FilePlus className="h-4 w-4 mr-2" />
+                  New Window
+                  <DropdownMenuShortcut>⌘N</DropdownMenuShortcut>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleOpen}>
+                  <FolderOpen className="h-4 w-4 mr-2" />
+                  Open File
+                  <DropdownMenuShortcut>⌘O</DropdownMenuShortcut>
+                </DropdownMenuItem>
+                {/* <DropdownMenuItem onClick={handleOpenInNewWindow}>
+                  <FolderOpen className="h-4 w-4 mr-2" />
+                  Open in New Window
+                  <DropdownMenuShortcut>⇧⌘O</DropdownMenuShortcut>
+                </DropdownMenuItem> */}
+                <DropdownMenuItem onClick={handleSave}>
+                  <Save className="h-4 w-4 mr-2" />
+                  Save
+                  <DropdownMenuShortcut>⌘S</DropdownMenuShortcut>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleSaveAs}>
+                  <SaveAll className="h-4 w-4 mr-2" />
+                  Save As...
+                  <DropdownMenuShortcut>⇧⌘S</DropdownMenuShortcut>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleExport}>
+                  <FileCode className="h-4 w-4 mr-2" />
+                  Export
+                  <DropdownMenuShortcut>⇧⌘E</DropdownMenuShortcut>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleCloseWindow}>
+                  <X className="h-4 w-4 mr-2" />
+                  Close Window
+                  <DropdownMenuShortcut>⌘W</DropdownMenuShortcut>
+                </DropdownMenuItem>
+                {windowsMenu.length > 0 && <DropdownMenuSeparator />}
+                {windowsMenu.map(win => (
+                  <DropdownMenuItem
+                    key={win.label}
+                    onClick={() => windowManager.focusWindow(win.label)}
+                    className={win.label === windowLabel ? 'bg-accent' : ''}
+                  >
+                    {win.title}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </header>
 
@@ -378,6 +447,45 @@ function App() {
           />
         </main>
       </div>
+
+      {/* Unsaved Changes Dialog */}
+      <UnsavedChangesDialog
+        open={showUnsavedDialog}
+        onOpenChange={setShowUnsavedDialog}
+        onDontSave={async () => {
+          setShowUnsavedDialog(false);
+          try {
+            if (pendingAction === 'close') {
+              await executeClose();
+            } else if (pendingAction === 'open') {
+              await executeOpen();
+            }
+          } catch (error) {
+            console.error('Error executing action:', error);
+          } finally {
+            setPendingAction(null);
+          }
+        }}
+        onSave={async () => {
+          setShowUnsavedDialog(false);
+          try {
+            await handleSave();
+            if (pendingAction === 'close') {
+              await executeClose();
+            } else if (pendingAction === 'open') {
+              await executeOpen();
+            }
+          } catch (error) {
+            console.error('Error executing action:', error);
+          } finally {
+            setPendingAction(null);
+          }
+        }}
+        onCancel={() => {
+          setShowUnsavedDialog(false);
+          setPendingAction(null);
+        }}
+      />
     </div>
   );
 }

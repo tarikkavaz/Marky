@@ -69,7 +69,7 @@ interface EditorProps {
 const editorExtensions = [
   StarterKit.configure({
     heading: {
-      levels: [1, 2, 3],
+      levels: [1, 2, 3, 4, 5, 6],
     },
     codeBlock: false, // Disable default code block
   }),
@@ -124,6 +124,15 @@ const editorExtensions = [
   Typography,
   Underline,
   Image.extend({
+    addKeyboardShortcuts() {
+      return {
+        'Mod-Shift-i': () => {
+          // This will be handled by the EditorContextMenu's insertImage function
+          // Return false to allow the event to bubble up
+          return false;
+        },
+      };
+    },
     addAttributes() {
       return {
         ...this.parent?.(),
@@ -156,6 +165,16 @@ const editorExtensions = [
   }),
   Table.configure({
     resizable: true,
+  }).extend({
+    addKeyboardShortcuts() {
+      return {
+        'Mod-t': () => {
+          // This will be handled by the EditorContextMenu's insertTable function
+          // Return false to allow the event to bubble up
+          return false;
+        },
+      };
+    },
   }),
   TableRow,
   TableHeader,

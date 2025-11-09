@@ -8,11 +8,11 @@
 
 @keyframes blink-outline {
   0%, 100% {
-    outline: 1px solid rgb(234 179 8 / 0.5);
+    outline: 1px solid oklch(79.5% 0.184 86.047 / 0.5);
     outline-offset: 0px;
   }
   50% {
-    outline: 1px solid rgb(234 179 8 / 0.1);
+    outline: 1px solid oklch(79.5% 0.184 86.047 / 0.1);
     outline-offset: 0px;
   }
 }
@@ -90,13 +90,15 @@
   --sidebar-ring: var(--color-gray-500);
   
   /* UI-specific colors */
-  --ui-window-bg: rgb(3, 7, 18);
-  --ui-window-border: rgb(41, 37, 36);
+  --ui-window-bg: var(--color-gray-900);
+  --ui-window-border: var(--color-gray-800);
   --ui-dropdown-bg: var(--color-gray-800);
   --ui-dropdown-fg: var(--color-gray-300);
   --ui-dropdown-hover: var(--color-gray-700);
   --ui-dropdown-active: var(--color-gray-700);
   --ui-dropdown-border: var(--color-gray-600);
+  --ui-blink-color: var(--color-yellow-500);
+  --ui-caret-color: var(--color-lime-500);
 }
 
 .dark {
@@ -190,7 +192,7 @@
 
   .ProseMirror {
     /* Editor text variables */
-    --editor-caret-color: #22c55e;
+    --editor-caret-color: var(--ui-caret-color);
     --editor-font-size: 1rem;
     --editor-line-height: 1.5rem;
     --editor-padding: 1rem;
