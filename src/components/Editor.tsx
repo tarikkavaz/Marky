@@ -167,6 +167,7 @@ const editorExtensions = [
   }),
   Table.configure({
     resizable: true,
+    allowTableNodeSelection: true,
   }).extend({
     addNodeView() {
       return ReactNodeViewRenderer(TableComponent, {
@@ -187,8 +188,8 @@ const editorExtensions = [
           
           // Check if this is a NodeSelection and it's a table
           if (selection instanceof NodeSelection && selection.node.type.name === 'table') {
-            // Use TipTap's deleteNode command to properly delete the entire table
-            return this.editor.commands.deleteNode('table');
+            // Use TipTap's deleteTable command to delete the entire table
+            return this.editor.commands.deleteTable();
           }
           
           return false;
@@ -200,8 +201,8 @@ const editorExtensions = [
           
           // Check if this is a NodeSelection and it's a table
           if (selection instanceof NodeSelection && selection.node.type.name === 'table') {
-            // Use TipTap's deleteNode command to properly delete the entire table
-            return this.editor.commands.deleteNode('table');
+            // Use TipTap's deleteTable command to delete the entire table
+            return this.editor.commands.deleteTable();
           }
           
           return false;
