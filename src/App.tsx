@@ -8,12 +8,22 @@ import {
   saveFile,
   saveFileAs,
   exportToHTMLFile,
+  loadFileFromPath,
   type FileState,
 } from './lib/fileOperations';
+import { windowManager, getCurrentWindowLabel, closeCurrentWindow } from './lib/windowManager';
 import { Button } from './components/ui/button';
-import { Pencil, FolderOpen, Save, SaveAll, FileCode } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from './components/ui/dropdown-menu';
+import { Pencil, FolderOpen, Save, SaveAll, FileCode, FilePlus, X, LayoutGrid } from 'lucide-react';
 import { type Editor as TipTapEditor } from '@tiptap/react';
 import logo from '/logo.png';
+import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow';
 
 function App() {
   const [fileState, setFileState] = useState<FileState>({
@@ -24,6 +34,78 @@ function App() {
 
   const [showToolbar, setShowToolbar] = useState(false);
   const [editor, setEditor] = useState<TipTapEditor | null>(null);
+  const [windowLabel, setWindowLabel] = useState<string>('');
+  const [windowsMenu, setWindowsMenu] = useState<Array<{ label: string; title: string }>>([]);
+
+  // Initialize window and load file from URL params
+  useEffect(() => {
+    async function initWindow() {
+      try {
+        const label = await getCurrentWindowLabel();
+        setWindowLabel(label);
+
+        // Register this window
+        const currentWindow = getCurrentWebviewWindow();
+        await windowManager.updateWindowTitle(label, null);
+
+        // Check if file path is passed via URL params
+        const params = new URLSearchParams(window.location.search);
+        const filePath = params.get('file');
+        const isRestore = params.get('restore') === 'true';
+        
+        if (filePath) {
+          // Load file from path
+          const result = await loadFileFromPath(filePath);
+          if (result) {
+            setFileState({
+              path: result.path,
+              content: result.content,
+              hasUnsavedChanges: false,
+            });
+            await windowManager.updateWindowTitle(label, result.path);
+          }
+        } else if (!isRestore && label === 'main') {
+          // Only restore session on the main window and if not already restoring
+          await windowManager.restoreWindowSession();
+        }
+
+        // Setup close request handler
+        await currentWindow.onCloseRequested(async (event) => {
+          if (fileState.hasUnsavedChanges) {
+            event.preventDefault();
+            const shouldClose = await closeCurrentWindow(true);
+            if (shouldClose) {
+              await windowManager.saveWindowSession();
+              await currentWindow.close();
+            }
+          } else {
+            await windowManager.closeWindow(label);
+            await windowManager.saveWindowSession();
+          }
+        });
+
+        // Update windows menu periodically
+        updateWindowsMenu();
+        const interval = setInterval(updateWindowsMenu, 2000);
+        return () => clearInterval(interval);
+      } catch (error) {
+        console.error('Failed to initialize window:', error);
+      }
+    }
+
+    initWindow();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const updateWindowsMenu = async () => {
+    const windows = windowManager.getAllWindows();
+    setWindowsMenu(
+      windows.map(win => ({
+        label: win.label,
+        title: win.title,
+      }))
+    );
+  };
 
   const handleOpen = async () => {
     try {
@@ -34,9 +116,40 @@ function App() {
           content: result.content,
           hasUnsavedChanges: false,
         });
+        // Update window title
+        if (windowLabel) {
+          await windowManager.updateWindowTitle(windowLabel, result.path);
+        }
       }
     } catch (error) {
       console.error('Failed to open file:', error);
+    }
+  };
+
+  const handleOpenInNewWindow = async () => {
+    try {
+      const result = await openFile();
+      if (result) {
+        await windowManager.createWindow(result.path, result.content);
+      }
+    } catch (error) {
+      console.error('Failed to open file in new window:', error);
+    }
+  };
+
+  const handleNewWindow = async () => {
+    try {
+      await windowManager.createWindow(null);
+    } catch (error) {
+      console.error('Failed to create new window:', error);
+    }
+  };
+
+  const handleCloseWindow = async () => {
+    try {
+      await closeCurrentWindow(fileState.hasUnsavedChanges);
+    } catch (error) {
+      console.error('Failed to close window:', error);
     }
   };
 
@@ -52,6 +165,10 @@ function App() {
           content: currentContent,
           hasUnsavedChanges: false,
         }));
+        // Update window title
+        if (windowLabel) {
+          await windowManager.updateWindowTitle(windowLabel, savedPath);
+        }
       }
     } catch (error) {
       console.error('Failed to save file:', error);
@@ -70,6 +187,10 @@ function App() {
           content: currentContent,
           hasUnsavedChanges: false,
         }));
+        // Update window title
+        if (windowLabel) {
+          await windowManager.updateWindowTitle(windowLabel, savedPath);
+        }
       }
     } catch (error) {
       console.error('Failed to save file as:', error);
@@ -101,9 +222,19 @@ function App() {
   // Keyboard shortcuts (excluding undo/redo which TipTap handles natively)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'o') {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'n') {
         e.preventDefault();
-        handleOpen();
+        handleNewWindow();
+      } else if ((e.metaKey || e.ctrlKey) && e.key === 'w') {
+        e.preventDefault();
+        handleCloseWindow();
+      } else if ((e.metaKey || e.ctrlKey) && e.key === 'o') {
+        e.preventDefault();
+        if (e.shiftKey) {
+          handleOpenInNewWindow();
+        } else {
+          handleOpen();
+        }
       } else if ((e.metaKey || e.ctrlKey) && e.key === 's') {
         e.preventDefault();
         if (e.shiftKey) {
@@ -121,7 +252,7 @@ function App() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [fileState.hasUnsavedChanges]);
 
   return (
     <div className="w-screen h-screen bg-transparent text-foreground">
@@ -141,6 +272,16 @@ function App() {
               Marky
             </span>
           </div>
+          <div className="flex-1 flex items-center justify-center" data-tauri-drag-region>
+            <span
+              className="text-sm text-muted-foreground select-none cursor-default"
+              data-tauri-drag-region
+            >
+              {fileState.path
+                ? fileState.path.split(/[/\\]/).pop()
+                : 'Untitled'}
+            </span>
+          </div>
           <div className="flex items-center gap-2" data-tauri-drag-region>
             <Button
               variant={showToolbar ? 'default' : 'ghost'}
@@ -152,15 +293,47 @@ function App() {
               <Pencil className="h-4 w-4" />
             </Button>
             <div className="w-px h-6 bg-border" />
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleOpen}
-              title="Open File (Cmd+O)"
-              className="h-8 w-8 p-0"
-            >
-              <FolderOpen className="h-4 w-4" />
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  title="Window Controls"
+                  className="h-8 w-8 p-0"
+                >
+                  <LayoutGrid className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={handleNewWindow}>
+                  <FilePlus className="h-4 w-4 mr-2" />
+                  New Window
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleOpen}>
+                  <FolderOpen className="h-4 w-4 mr-2" />
+                  Open
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleOpenInNewWindow}>
+                  <FolderOpen className="h-4 w-4 mr-2" />
+                  Open in New Window
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleExport}>
+                  <FileCode className="h-4 w-4 mr-2" />
+                  Export
+                </DropdownMenuItem>
+                {windowsMenu.length > 0 && <DropdownMenuSeparator />}
+                {windowsMenu.map((win) => (
+                  <DropdownMenuItem
+                    key={win.label}
+                    onClick={() => windowManager.focusWindow(win.label)}
+                    className={win.label === windowLabel ? 'bg-accent' : ''}
+                  >
+                    {win.title}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <div className="w-px h-6 bg-border" />
             <Button
               variant="ghost"
               size="sm"
@@ -185,11 +358,11 @@ function App() {
             <Button
               variant="ghost"
               size="sm"
-              onClick={handleExport}
-              title="Export to HTML"
+              onClick={handleCloseWindow}
+              title="Close Window (Cmd+W)"
               className="h-8 w-8 p-0"
             >
-              <FileCode className="h-4 w-4" />
+              <X className="h-4 w-4" />
             </Button>
           </div>
         </header>

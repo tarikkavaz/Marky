@@ -21,14 +21,13 @@ import { readFile } from '@tauri-apps/plugin-fs';
 import { InputDialog } from './InputDialog';
 import { useState, useEffect } from 'react';
 import { open, message } from '@tauri-apps/plugin-dialog';
-import { saveImageForMarkdown } from '../lib/imageHandler';
 
 interface ToolbarProps {
   editor: Editor | null;
   currentFilePath: string | null;
 }
 
-export function Toolbar({ editor, currentFilePath }: ToolbarProps) {
+export function Toolbar({ editor }: ToolbarProps) {
   const [linkDialogOpen, setLinkDialogOpen] = useState(false);
   const [tableRowsDialogOpen, setTableRowsDialogOpen] = useState(false);
   const [tableColsDialogOpen, setTableColsDialogOpen] = useState(false);
@@ -98,10 +97,9 @@ export function Toolbar({ editor, currentFilePath }: ToolbarProps) {
         const base64 = btoa(String.fromCharCode(...imageData));
         const dataUrl = `data:${mimeType};base64,${base64}`;
         
-        // Insert image with base64 src and original path in data-original-src
+        // Insert image with base64 src
         editor.chain().focus().setImage({ 
-          src: dataUrl,
-          'data-original-src': filePath
+          src: dataUrl
         }).run();
       }
     } catch (error) {

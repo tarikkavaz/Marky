@@ -1,3 +1,5 @@
+import { convertFileSrc } from '@tauri-apps/api/core';
+
 export async function saveImageForMarkdown(
   imagePath: string,
   _markdownPath: string | null

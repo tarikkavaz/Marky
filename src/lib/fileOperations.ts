@@ -2,8 +2,9 @@ import { open, save } from '@tauri-apps/plugin-dialog';
 import { readTextFile, writeTextFile, readFile } from '@tauri-apps/plugin-fs';
 import { dirname } from '@tauri-apps/api/path';
 import TurndownService from 'turndown';
+// @ts-ignore - no types available for turndown-plugin-gfm
 import { tables } from 'turndown-plugin-gfm';
-import { imageUrlToMarkdownPath, markdownPathToImageUrl } from './imageHandler';
+import { imageUrlToMarkdownPath } from './imageHandler';
 
 export interface FileState {
   path: string | null;
@@ -18,11 +19,11 @@ const turndownService = new TurndownService({
   emDelimiter: '*',
   bulletListMarker: '-',
   preformattedCode: true,
-  blankReplacement: (content, node) => {
-    return node.isBlock ? '\n\n' : '';
+  blankReplacement: (_content, node) => {
+    return (node as any).isBlock ? '\n\n' : '';
   },
-  keepReplacement: (content, node) => {
-    return node.isBlock ? '\n\n' + node.outerHTML + '\n\n' : node.outerHTML;
+  keepReplacement: (_content, node) => {
+    return (node as any).isBlock ? '\n\n' + node.outerHTML + '\n\n' : node.outerHTML;
   },
 });
 
@@ -246,6 +247,19 @@ async function htmlToMarkdown(html: string, markdownPath: string | null): Promis
   }
 }
 
+export async function loadFileFromPath(filePath: string): Promise<{ path: string; content: string } | null> {
+  try {
+    const markdownContent = await readTextFile(filePath);
+    // Convert Markdown to HTML for the editor
+    const htmlContent = await markdownToHTML(markdownContent, filePath);
+    
+    return { path: filePath, content: htmlContent };
+  } catch (error) {
+    console.error('Error loading file from path:', error);
+    throw error;
+  }
+}
+
 export async function openFile(): Promise<{ path: string; content: string } | null> {
   try {
     const filePath = await open({
@@ -260,11 +274,7 @@ export async function openFile(): Promise<{ path: string; content: string } | nu
       return null;
     }
 
-    const markdownContent = await readTextFile(filePath);
-    // Convert Markdown to HTML for the editor
-    const htmlContent = await markdownToHTML(markdownContent, filePath);
-    
-    return { path: filePath, content: htmlContent };
+    return loadFileFromPath(filePath);
   } catch (error) {
     console.error('Error opening file:', error);
     throw error;

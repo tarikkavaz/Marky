@@ -26,7 +26,6 @@ import {
 } from 'lucide-react';
 import { open, message } from '@tauri-apps/plugin-dialog';
 import { readFile } from '@tauri-apps/plugin-fs';
-import { saveImageForMarkdown } from '../lib/imageHandler';
 import { useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
 import { InputDialog } from './InputDialog';
@@ -42,7 +41,6 @@ interface EditorContextMenuProps {
 export function EditorContextMenu({ 
   editor, 
   children,
-  currentFilePath,
   onGrammarCorrect, 
   onStyleChange 
 }: EditorContextMenuProps) {
@@ -95,10 +93,9 @@ export function EditorContextMenu({
         const base64 = btoa(String.fromCharCode(...imageData));
         const dataUrl = `data:${mimeType};base64,${base64}`;
         
-        // Insert image with base64 src and original path in data-original-src
+        // Insert image with base64 src
         editor.chain().focus().setImage({ 
-          src: dataUrl,
-          'data-original-src': filePath
+          src: dataUrl
         }).run();
       }
     } catch (error) {
