@@ -21,10 +21,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuShortcut,
 } from './components/ui/dropdown-menu';
-import { Pencil, FolderOpen, Save, SaveAll, FileCode, FilePlus, X, LayoutGrid } from 'lucide-react';
+import { Pencil, FolderOpen, Save, SaveAll, FileCode, FilePlus, X, LayoutGrid, Power } from 'lucide-react';
 import { type Editor as TipTapEditor } from '@tiptap/react';
 import logo from '/logo.png';
 import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow';
+import { exit } from '@tauri-apps/plugin-process';
 
 function App() {
   const [fileState, setFileState] = useState<FileState>({
@@ -38,7 +39,7 @@ function App() {
   const [windowLabel, setWindowLabel] = useState<string>('');
   const [windowsMenu, setWindowsMenu] = useState<Array<{ label: string; title: string }>>([]);
   const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
-  const [pendingAction, setPendingAction] = useState<'close' | 'open' | null>(null);
+  const [pendingAction, setPendingAction] = useState<'close' | 'quit' | 'open' | null>(null);
 
   // Use ref to track current unsaved changes state for the close handler
   const hasUnsavedChangesRef = useRef(fileState.hasUnsavedChanges);
@@ -205,6 +206,27 @@ function App() {
     await currentWindow.close();
   };
 
+  const executeQuit = async () => {
+    // Clear unsaved changes flag BEFORE quitting
+    hasUnsavedChangesRef.current = false;
+    setFileState(prev => ({ ...prev, hasUnsavedChanges: false }));
+    await windowManager.saveWindowSession();
+    await exit(0);
+  };
+
+  const handleQuitApp = async () => {
+    try {
+      if (fileState.hasUnsavedChanges) {
+        setPendingAction('quit');
+        setShowUnsavedDialog(true);
+      } else {
+        await executeQuit();
+      }
+    } catch (error) {
+      console.error('Failed to quit app:', error);
+    }
+  };
+
   const handleSave = async () => {
     try {
       // Get current content from editor
@@ -357,24 +379,6 @@ function App() {
             >
               <Save className="h-4 w-4" />
             </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleSaveAs}
-              title="Save As (Cmd+Shift+S)"
-              className="h-8 w-8 p-0 hidden"
-            >
-              <SaveAll className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleCloseWindow}
-              title="Close Window (Cmd+W)"
-              className="h-8 w-8 p-0 hidden"
-            >
-              <X className="h-4 w-4" />
-            </Button>
             <div className="w-px h-6 bg-border" />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -419,6 +423,11 @@ function App() {
                   Close Window
                   <DropdownMenuShortcut>⌘W</DropdownMenuShortcut>
                 </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleQuitApp}>
+                  <Power className="h-4 w-4 mr-2" />
+                  Quit App
+                  <DropdownMenuShortcut>⌘Q</DropdownMenuShortcut>
+                </DropdownMenuItem>
                 {windowsMenu.length > 0 && <DropdownMenuSeparator />}
                 {windowsMenu.map(win => (
                   <DropdownMenuItem
@@ -457,6 +466,8 @@ function App() {
           try {
             if (pendingAction === 'close') {
               await executeClose();
+            } else if (pendingAction === 'quit') {
+              await executeQuit();
             } else if (pendingAction === 'open') {
               await executeOpen();
             }
@@ -472,6 +483,8 @@ function App() {
             await handleSave();
             if (pendingAction === 'close') {
               await executeClose();
+            } else if (pendingAction === 'quit') {
+              await executeQuit();
             } else if (pendingAction === 'open') {
               await executeOpen();
             }

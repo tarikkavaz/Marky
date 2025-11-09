@@ -37,8 +37,11 @@
     {
       "identifier": "fs:scope",
       "allow": [
-        { "path": "$HOME/**" }
+        {
+          "path": "$HOME/**"
+        }
       ]
-    }
+    },
+    "process:default"
   ]
 }

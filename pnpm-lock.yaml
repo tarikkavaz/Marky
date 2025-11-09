@@ -32,6 +32,9 @@ importers:
       '@tauri-apps/plugin-fs':
         specifier: ~2.4.4
         version: 2.4.4
+      '@tauri-apps/plugin-process':
+        specifier: ~2
+        version: 2.3.1
       '@tiptap/core':
         specifier: ^3.10.3
         version: 3.10.3(@tiptap/pm@3.10.3)
@@ -1134,6 +1137,9 @@ packages:
 
   '@tauri-apps/plugin-fs@2.4.4':
     resolution: {integrity: sha512-MTorXxIRmOnOPT1jZ3w96vjSuScER38ryXY88vl5F0uiKdnvTKKTtaEjTEo8uPbl4e3gnUtfsDVwC7h77GQLvQ==}
+
+  '@tauri-apps/plugin-process@2.3.1':
+    resolution: {integrity: sha512-nCa4fGVaDL/B9ai03VyPOjfAHRHSBz5v6F/ObsB73r/dA3MHHhZtldaDMIc0V/pnUw9ehzr2iEG+XkSEyC0JJA==}
 
   '@tiptap/core@3.10.3':
     resolution: {integrity: sha512-FJoIm819in9/5JS2MM1SpN1nsR+ke+hbb3jCA8KMiBifNqUpUboHZSzyi6BmjZDogkQV0dA5+GSoEmYWir6fNw==}
@@ -3236,6 +3242,10 @@ snapshots:
       '@tauri-apps/api': 2.9.0
 
   '@tauri-apps/plugin-fs@2.4.4':
+    dependencies:
+      '@tauri-apps/api': 2.9.0
+
+  '@tauri-apps/plugin-process@2.3.1':
     dependencies:
       '@tauri-apps/api': 2.9.0
 

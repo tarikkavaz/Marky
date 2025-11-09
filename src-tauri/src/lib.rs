@@ -1,9 +1,9 @@
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
 use std::sync::Mutex;
 use tauri::{Manager, State};
-use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct WindowInfo {
@@ -78,12 +78,12 @@ fn save_window_session(
 ) -> Result<(), String> {
     // Save to file
     let json = serde_json::to_string(&file_paths).map_err(|e| e.to_string())?;
-    
+
     // Create parent directory if it doesn't exist
     if let Some(parent) = state.session_path.parent() {
         fs::create_dir_all(parent).map_err(|e| e.to_string())?;
     }
-    
+
     fs::write(&state.session_path, json).map_err(|e| e.to_string())?;
     Ok(())
 }
@@ -94,7 +94,7 @@ fn load_window_session(state: State<WindowRegistry>) -> Result<Vec<String>, Stri
     if !state.session_path.exists() {
         return Ok(Vec::new());
     }
-    
+
     let json = fs::read_to_string(&state.session_path).map_err(|e| e.to_string())?;
     let file_paths: Vec<String> = serde_json::from_str(&json).map_err(|e| e.to_string())?;
     Ok(file_paths)
@@ -117,6 +117,7 @@ async fn show_close_confirmation(app: tauri::AppHandle) -> Result<bool, String> 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
         .invoke_handler(tauri::generate_handler![
