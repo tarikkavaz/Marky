@@ -55,10 +55,12 @@ class WindowManager {
         title,
         width: 800,
         height: 1000,
-        decorations: false,
+        decorations: true,
         transparent: true,
         center: true,
         resizable: true,
+        titleBarStyle: 'Overlay',
+        hiddenTitle: true,
       });
 
       // Wait for window to be created
@@ -192,4 +194,3 @@ export async function closeCurrentWindow(hasUnsavedChanges: boolean): Promise<bo
   await currentWindow.close();
   return true;
 }
-

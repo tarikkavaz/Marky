@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Editor } from './components/Editor';
 import { Toolbar } from './components/Toolbar';
-import { WindowControls } from './components/WindowControls';
 
 import {
   openFile,
@@ -255,15 +254,14 @@ function App() {
   }, [fileState.hasUnsavedChanges]);
 
   return (
-    <div className="w-screen h-screen bg-transparent text-foreground">
-      <div className="flex flex-col w-full h-full bg-ui-window backdrop-blur-2xl rounded-2xl shadow-2xl border border-ui-window overflow-hidden">
-        {/* Header with window controls */}
+    <div className="w-screen h-screen bg-background text-foreground">
+      <div className="flex flex-col w-full h-full rounded-2xl shadow-2xl overflow-hidden">
+        {/* Header with native window controls */}
         <header
-          className="flex items-center justify-between border-b border-ui-window bg-background py-2 px-4"
+          className="flex items-center justify-between border-b border-ui-window bg-background py-2 px-4 min-h-14 pl-20"
           data-tauri-drag-region
         >
           <div className="flex items-center gap-2" data-tauri-drag-region>
-            <WindowControls />
             <img src={logo} alt="Marky" className="size-7" data-tauri-drag-region />
             <span
               className="text-lg font-semibold text-foreground select-none cursor-default"
@@ -360,7 +358,7 @@ function App() {
               size="sm"
               onClick={handleCloseWindow}
               title="Close Window (Cmd+W)"
-              className="h-8 w-8 p-0"
+              className="h-8 w-8 p-0 hidden"
             >
               <X className="h-4 w-4" />
             </Button>

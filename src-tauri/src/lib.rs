@@ -144,11 +144,12 @@ pub fn run() {
                 )?;
             }
 
-            // Get window and ensure it's visible
-            #[cfg(debug_assertions)]
-            {
-                let window = app.get_webview_window("main").unwrap();
-                window.open_devtools();
+            // Get window for devtools and position traffic lights on macOS
+            if let Some(window) = app.get_webview_window("main") {
+                #[cfg(debug_assertions)]
+                {
+                    window.open_devtools();
+                }
             }
 
             Ok(())

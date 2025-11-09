@@ -1,7 +1,7 @@
 <!-- 44f0bbbd-7235-4ed2-b8c1-cdce15572c20 f05da879-b633-4f0f-a832-eec316920a17 -->
 # Marky Development Plan - Phase Based
 
-## Phase 1: Core UI & Editor Foundation
+## Phase 1: Core UI & Editor Foundation (Done)
 **Goal**: Create the basic editor interface with borderless black UI
 
 ### Tasks:
@@ -18,7 +18,7 @@
 
 ---
 
-## Phase 2: File Operations (Open/Save/Export)
+## Phase 2: File Operations (Open/Save/Export) (Done)
 **Goal**: Enable users to work with files
 
 ### Tasks:
@@ -35,7 +35,7 @@
 
 ---
 
-## Phase 3: Basic Formatting & Live Preview
+## Phase 3: Basic Formatting & Live Preview (Done)
 **Goal**: Show formatted text as you type (bold, italic, etc.)
 
 ### Tasks:
@@ -51,7 +51,7 @@
 
 ---
 
-## Phase 4: Toolbar & Formatting Controls
+## Phase 4: Toolbar & Formatting Controls (Done)
 **Goal**: Add toggleable header toolbar for formatting
 
 ### Tasks:
@@ -69,7 +69,7 @@
 
 ---
 
-## Phase 5: Context Menu
+## Phase 5: Context Menu (Done)
 **Goal**: Right-click menu for quick actions
 
 ### Tasks:
@@ -89,7 +89,7 @@
 
 ---
 
-## Phase 6: Multiple File Support
+## Phase 6: Multiple File Support (Done)
 **Goal**: Able to open multiple files in separate windows with management features
 
 ### Tasks:
