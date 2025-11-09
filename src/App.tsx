@@ -40,6 +40,7 @@ function App() {
   const [windowsMenu, setWindowsMenu] = useState<Array<{ label: string; title: string }>>([]);
   const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
   const [pendingAction, setPendingAction] = useState<'close' | 'quit' | 'open' | null>(null);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
 
   // Use ref to track current unsaved changes state for the close handler
   const hasUnsavedChangesRef = useRef(fileState.hasUnsavedChanges);
@@ -380,9 +381,9 @@ function App() {
               <Save className="h-4 w-4" />
             </Button>
             <div className="w-px h-6 bg-border" />
-            <DropdownMenu>
+            <DropdownMenu open={dropdownOpen} onOpenChange={setDropdownOpen}>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm" title="Window Controls" className="h-8 w-8 p-0">
+                <Button variant={dropdownOpen ? 'default' : 'ghost'} size="sm" title="Window Controls" className="h-8 w-8 p-0">
                   <LayoutGrid className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>

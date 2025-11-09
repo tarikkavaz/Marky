@@ -90,7 +90,7 @@
   --sidebar-ring: var(--color-gray-500);
   
   /* UI-specific colors */
-  --ui-window-bg: var(--color-gray-900);
+  --ui-window-bg: var(--color-gray-950);
   --ui-window-border: var(--color-gray-800);
   --ui-dropdown-bg: var(--color-gray-800);
   --ui-dropdown-fg: var(--color-gray-300);
