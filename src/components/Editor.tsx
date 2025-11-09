@@ -15,6 +15,7 @@ import { common, createLowlight } from 'lowlight';
 import { useEffect, useRef } from 'react';
 import { EditorContextMenu } from './EditorContextMenu';
 import { CodeBlockComponent } from './CodeBlockComponent';
+import { TableComponent } from './TableComponent';
 
 // Create lowlight instance with common languages
 const lowlight = createLowlight(common);
@@ -166,6 +167,11 @@ const editorExtensions = [
   Table.configure({
     resizable: true,
   }).extend({
+    addNodeView() {
+      return ReactNodeViewRenderer(TableComponent, {
+        contentDOMElementTag: 'table',
+      });
+    },
     addKeyboardShortcuts() {
       return {
         'Mod-t': () => {
@@ -196,6 +202,13 @@ export function Editor({ content, onChange, onEditorReady, currentFilePath }: Ed
         class: 'prose prose-invert max-w-none focus:outline-none min-h-full p-8',
       },
       handlePaste: (view, event) => {
+        // Check if HTML is available - if so, let TipTap handle it (for tables, code blocks, etc.)
+        const html = event.clipboardData?.getData('text/html');
+        if (html && (html.includes('<table') || html.includes('<pre') || html.includes('<code'))) {
+          // Let TipTap handle HTML paste for structured content
+          return false;
+        }
+        
         const text = event.clipboardData?.getData('text/plain');
         if (!text) return false;
         
