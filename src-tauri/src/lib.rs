@@ -145,10 +145,10 @@ pub fn run() {
             }
 
             // Get window for devtools and position traffic lights on macOS
-            if let Some(window) = app.get_webview_window("main") {
+            if let Some(_window) = app.get_webview_window("main") {
                 #[cfg(debug_assertions)]
                 {
-                    window.open_devtools();
+                    _window.open_devtools();
                 }
             }
 
