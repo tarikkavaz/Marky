@@ -394,7 +394,7 @@
   .table-wrapper table,
   .code-block-wrapper pre {
     pointer-events: auto;
-    margin: 0 2px;
+    margin: 2px !important;
   }
 
   /* Prevent wrapper from blocking clicks inside content */

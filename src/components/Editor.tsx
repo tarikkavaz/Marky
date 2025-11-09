@@ -11,6 +11,7 @@ import { TableCell } from '@tiptap/extension-table-cell';
 import { TableHeader } from '@tiptap/extension-table-header';
 import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight';
 import { Extension } from '@tiptap/core';
+import { NodeSelection } from '@tiptap/pm/state';
 import { common, createLowlight } from 'lowlight';
 import { useEffect, useRef } from 'react';
 import { EditorContextMenu } from './EditorContextMenu';
@@ -177,6 +178,32 @@ const editorExtensions = [
         'Mod-t': () => {
           // This will be handled by the EditorContextMenu's insertTable function
           // Return false to allow the event to bubble up
+          return false;
+        },
+        Backspace: () => {
+          // Delete entire table when table node is selected
+          const { state } = this.editor;
+          const { selection } = state;
+          
+          // Check if this is a NodeSelection and it's a table
+          if (selection instanceof NodeSelection && selection.node.type.name === 'table') {
+            // Use TipTap's deleteNode command to properly delete the entire table
+            return this.editor.commands.deleteNode('table');
+          }
+          
+          return false;
+        },
+        Delete: () => {
+          // Delete entire table when table node is selected
+          const { state } = this.editor;
+          const { selection } = state;
+          
+          // Check if this is a NodeSelection and it's a table
+          if (selection instanceof NodeSelection && selection.node.type.name === 'table') {
+            // Use TipTap's deleteNode command to properly delete the entire table
+            return this.editor.commands.deleteNode('table');
+          }
+          
           return false;
         },
       };
