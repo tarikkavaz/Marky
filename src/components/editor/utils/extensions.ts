@@ -11,7 +11,7 @@ import { TableHeader } from '@tiptap/extension-table-header';
 import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight';
 import { Extension } from '@tiptap/core';
 import { NodeSelection } from '@tiptap/pm/state';
-import { ReactNodeViewRenderer } from '@tiptap/react';
+import { ReactNodeViewRenderer, type ReactNodeViewProps } from '@tiptap/react';
 import { common, createLowlight } from 'lowlight';
 import type { ComponentType } from 'react';
 
@@ -58,8 +58,8 @@ export const TabHandler = Extension.create({
 });
 
 export function createEditorExtensions(
-  CodeBlockComponent: ComponentType<any>,
-  TableComponent: ComponentType<any>
+  CodeBlockComponent: ComponentType<ReactNodeViewProps>,
+  TableComponent: ComponentType<ReactNodeViewProps>
 ) {
   return [
     StarterKit.configure({

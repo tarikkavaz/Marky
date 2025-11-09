@@ -70,6 +70,8 @@
   --sidebar-border: var(--color-gray-800);
   --sidebar-ring: var(--color-gray-500);
   
+  
+  
   /* UI-specific colors */
   --ui-window-bg: var(--color-gray-950);
   --ui-window-border: var(--color-gray-800);
@@ -80,6 +82,8 @@
   --ui-dropdown-border: var(--color-gray-600);
   --ui-blink-color: var(--color-yellow-500);
   --ui-caret-color: var(--color-lime-500);
+  --ui-selected-border: var(--color-blue-500);
+  --ui-hover-border: var(--color-gray-600);
 }
 
 .dark {

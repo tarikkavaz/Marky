@@ -57,7 +57,7 @@
   /* Gray outline on border hover */
   .table-wrapper[data-hovering-border="true"],
   .code-block-wrapper[data-hovering-border="true"] {
-    outline: 1px solid var(--color-gray-600);
+    outline: 1px solid var(--ui-hover-border);
     border-radius: 10px;
     outline-offset: -1px;
     cursor: pointer;
@@ -66,7 +66,7 @@
   /* Blue thicker outline when selected */
   .table-wrapper[data-selected="true"],
   .code-block-wrapper[data-selected="true"] {
-    outline: 3px solid var(--color-blue-500);
+    outline: 3px solid var(--ui-selected-border);
     border-radius: 10px;
     outline-offset: -3px;
     cursor: pointer;
