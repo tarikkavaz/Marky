@@ -378,6 +378,7 @@
   .table-wrapper[data-hovering-border="true"],
   .code-block-wrapper[data-hovering-border="true"] {
     outline: 1px solid var(--color-gray-600);
+    border-radius: 10px;
     outline-offset: -1px;
     cursor: pointer;
   }
@@ -386,6 +387,7 @@
   .table-wrapper[data-selected="true"],
   .code-block-wrapper[data-selected="true"] {
     outline: 3px solid var(--color-blue-500);
+    border-radius: 10px;
     outline-offset: -3px;
     cursor: pointer;
   }

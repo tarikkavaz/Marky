@@ -74,6 +74,8 @@ const editorExtensions = [
       levels: [1, 2, 3, 4, 5, 6],
     },
     codeBlock: false, // Disable default code block
+    link: false, // Disable - added explicitly below
+    underline: false, // Disable - added explicitly below
   }),
   TabHandler,
   CodeBlockLowlight.extend({
@@ -300,13 +302,15 @@ export function Editor({ content, onChange, onEditorReady, currentFilePath }: Ed
     
     // Only update if content is different from what we last set
     if (content !== lastContentRef.current) {
-    isUpdatingRef.current = true;
-      // Set content directly (temporary - not converting from markdown yet)
-      editor.commands.setContent(content);
-      lastContentRef.current = content;
-    setTimeout(() => {
-      isUpdatingRef.current = false;
-      }, 0);
+      isUpdatingRef.current = true;
+      // Defer content update to avoid flushSync during render
+      requestAnimationFrame(() => {
+        editor.commands.setContent(content);
+        lastContentRef.current = content;
+        setTimeout(() => {
+          isUpdatingRef.current = false;
+        }, 0);
+      });
     }
   }, [content, editor]);
 
