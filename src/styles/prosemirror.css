@@ -141,7 +141,8 @@
   .ProseMirror ol > li::before {
     content: counter(list-counter) '.';
     display: inline-block;
-    margin-top: 0.125rem;
+    margin-top: 0;
+    vertical-align: baseline;
     color: var(--color-gray-400);
     flex: 0 0 auto;
     width: auto;
@@ -161,13 +162,21 @@
     order: 1;
   }
   
+  /* Reduce gap for list items that contain nested lists */
+  .ProseMirror ul:not([data-type="taskList"]) > li:has(> ul),
+  .ProseMirror ul:not([data-type="taskList"]) > li:has(> ol),
+  .ProseMirror ol > li:has(> ul),
+  .ProseMirror ol > li:has(> ol) {
+    gap: 0.125rem !important;
+  }
+
   /* Nested lists in regular list items should be block-level and full width, wrapping to new line */
   .ProseMirror ul:not([data-type="taskList"]) > li > ul,
   .ProseMirror ul:not([data-type="taskList"]) > li > ol,
   .ProseMirror ol > li > ul,
   .ProseMirror ol > li > ol {
     display: block !important;
-    margin-top: -0.25rem !important;
+    margin-top: -1rem !important;
     margin-bottom: 0 !important;
     padding-top: 0 !important;
     flex-basis: 100% !important;
@@ -192,7 +201,7 @@
   .ProseMirror ul:not([data-type="taskList"]) > li > ol > li:first-child,
   .ProseMirror ol > li > ul > li:first-child,
   .ProseMirror ol > li > ol > li:first-child {
-    margin-top: -0.25rem !important;
+    margin-top: 0 !important;
     padding-top: 0 !important;
   }
   
