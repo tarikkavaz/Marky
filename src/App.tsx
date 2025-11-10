@@ -59,6 +59,8 @@ function App() {
   const syncDebounceTimerRef = useRef<NodeJS.Timeout | null>(null);
   const isSyncingRef = useRef(false);
   const lastMarkdownRef = useRef<string>('');
+  // Track when we're updating content internally to ignore file watcher events
+  const isInternalUpdateRef = useRef(false);
 
   // Use ref to track current unsaved changes state for the close handler
   const hasUnsavedChangesRef = useRef(fileState.hasUnsavedChanges);
@@ -83,6 +85,11 @@ function App() {
         const unlistenChanged = await onFileChanged(async (filePath) => {
           // Only handle if this is the current file
           if (fileStateRef.current.path === filePath) {
+            // Ignore changes that happen during internal updates (source/preview sync)
+            if (isInternalUpdateRef.current || isSyncingRef.current) {
+              return;
+            }
+            
             // Ignore changes that happen within 500ms of our last save (to avoid reload loops)
             const timeSinceLastSave = Date.now() - lastSaveTimeRef.current;
             if (timeSinceLastSave < 500) {
@@ -92,6 +99,7 @@ function App() {
             // If no unsaved changes, auto-reload immediately
             if (!fileStateRef.current.hasUnsavedChanges) {
               try {
+                isInternalUpdateRef.current = true;
                 const result = await loadFileFromPath(filePath);
                 if (result) {
                   setFileState({
@@ -104,8 +112,13 @@ function App() {
                     editorRef.current.commands.setContent(result.content);
                   }
                 }
+                // Clear the flag after a short delay
+                setTimeout(() => {
+                  isInternalUpdateRef.current = false;
+                }, 500);
               } catch (error) {
                 console.error('Failed to auto-reload file:', error);
+                isInternalUpdateRef.current = false;
               }
             } else {
               // Show dialog if there are unsaved changes
@@ -388,8 +401,16 @@ function App() {
 
   const handleSave = async () => {
     try {
-      // Get current content from editor
-      const currentContent = editor?.getHTML() || fileState.content;
+      // Get current content - if in source mode, convert markdown to HTML first
+      let currentContent: string;
+      if (showSource && markdownContent) {
+        // In source mode, use the current markdown and convert to HTML
+        currentContent = await markdownToHTML(markdownContent, fileState.path);
+      } else {
+        // In preview mode, get HTML from editor
+        currentContent = editor?.getHTML() || fileState.content;
+      }
+      
       const savedPath = await saveFile(currentContent, fileState.path);
       if (savedPath) {
         // Update last save time to ignore immediate file change events
@@ -414,8 +435,16 @@ function App() {
 
   const handleSaveAs = async () => {
     try {
-      // Get current content from editor
-      const currentContent = editor?.getHTML() || fileState.content;
+      // Get current content - if in source mode, convert markdown to HTML first
+      let currentContent: string;
+      if (showSource && markdownContent) {
+        // In source mode, use the current markdown and convert to HTML
+        currentContent = await markdownToHTML(markdownContent, fileState.path);
+      } else {
+        // In preview mode, get HTML from editor
+        currentContent = editor?.getHTML() || fileState.content;
+      }
+      
       const savedPath = await saveFileAs(currentContent);
       if (savedPath) {
         // Update last save time to ignore immediate file change events
@@ -449,6 +478,11 @@ function App() {
   };
 
   const handleContentChange = useCallback((newContent: string) => {
+    // Skip if this is an internal update (from source mode sync)
+    if (isInternalUpdateRef.current) {
+      return;
+    }
+    
     setFileState(prev => ({
       ...prev,
       content: newContent,
@@ -486,6 +520,7 @@ function App() {
       syncDebounceTimerRef.current = setTimeout(async () => {
         try {
           isSyncingRef.current = true;
+          isInternalUpdateRef.current = true;
           const html = await markdownToHTML(newMarkdown, fileState.path);
           
           // Update editor content
@@ -499,8 +534,14 @@ function App() {
             content: html,
             hasUnsavedChanges: prev.content !== html && (prev.path !== null || html !== ''),
           }));
+          
+          // Clear the internal update flag after a short delay to allow file watcher to settle
+          setTimeout(() => {
+            isInternalUpdateRef.current = false;
+          }, 1000);
         } catch (error) {
           console.error('Failed to sync markdown to HTML:', error);
+          isInternalUpdateRef.current = false;
         } finally {
           isSyncingRef.current = false;
         }
