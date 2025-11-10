@@ -361,10 +361,10 @@ fn create_window_with_file(
             #[cfg(target_os = "macos")]
             {
                 builder = builder.title_bar_style(tauri::TitleBarStyle::Visible);
+                builder = builder.hidden_title(false);
             }
             
             let window_result = builder
-                .hidden_title(false)
                 .initialization_script(&init_script)
                 .build();
             
