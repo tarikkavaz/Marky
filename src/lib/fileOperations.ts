@@ -162,15 +162,31 @@ async function markdownToHTML(markdown: string, markdownPath: string | null): Pr
       const isChecked = checked === 'x';
       return `<li data-type="taskItem" data-checked="${isChecked}"><label><input type="checkbox" ${isChecked ? 'checked' : ''}></label><div>${text}</div></li>`;
     })
-    // Regular lists
+    // Ordered lists - mark them with a data attribute so we can identify them later
+    // Only match non-empty lines (skip empty lines)
+    .replace(/^(\d+)\. (.+)$/gm, '<li data-ordered="true">$2</li>')
+    // Regular unordered lists - only match non-empty lines
     .replace(/^- (.+)$/gm, '<li>$1</li>')
+    // Group consecutive list items into lists
     .replace(/(<li[^>]*>.*<\/li>\n?)+/g, (match) => {
       // Check if this is a task list
       if (match.includes('data-type="taskItem"')) {
         return `<ul data-type="taskList">${match}</ul>`;
       }
+      // Check if this should be an ordered list (has data-ordered attribute)
+      if (match.includes('data-ordered="true"')) {
+        // Remove the data-ordered attribute and wrap in <ol>
+        const cleanedMatch = match.replace(/ data-ordered="true"/g, '');
+        return `<ol>${cleanedMatch}</ol>`;
+      }
+      // Regular unordered list
       return `<ul>${match}</ul>`;
     })
+    // Clean up empty list items and trailing breaks
+    .replace(/<li[^>]*>\s*<\/li>/g, '')
+    .replace(/<li[^>]*><p>\s*<\/p><\/li>/g, '')
+    .replace(/<li[^>]*><p><br[^>]*><\/p><\/li>/g, '')
+    .replace(/<li[^>]*><p><br[^>]*class="ProseMirror-trailingBreak"[^>]*><\/p><\/li>/g, '')
     // Footnote definitions MUST come before footnote references
     // Otherwise [^1]: content will be matched by the reference regex first
     .replace(/\[\^(\d+)\]: (.+)$/gm, (match, id, content) => {
@@ -282,7 +298,7 @@ async function markdownToHTML(markdown: string, markdownPath: string | null): Pr
     .split('\n\n')
     .map(para => {
       // Skip already processed block elements and images
-      if (para.match(/^<(h\d|ul|pre|table|img|div|blockquote|hr)/)) {
+      if (para.match(/^<(h\d|ul|ol|pre|table|img|div|blockquote|hr)/)) {
         return para;
       }
       // Skip empty paragraphs
@@ -293,6 +309,10 @@ async function markdownToHTML(markdown: string, markdownPath: string | null): Pr
       if (para.includes('<img')) {
         return para;
       }
+      // Skip if this contains list items (already processed)
+      if (para.includes('<li')) {
+        return para;
+      }
       // Handle line breaks within paragraphs (two spaces + newline in markdown)
       const processedPara = para
         .replace(/  \n/g, '<br>')  // Two spaces + newline = <br>
@@ -300,7 +320,13 @@ async function markdownToHTML(markdown: string, markdownPath: string | null): Pr
       return `<p>${processedPara}</p>`;
     })
     .filter(para => para !== '')  // Remove empty strings
-    .join('\n\n');  // Join with double newlines to separate paragraphs
+    .join('\n\n')  // Join with double newlines to separate paragraphs
+    // Clean up empty list items that might have been created
+    .replace(/<li[^>]*>\s*<\/li>/g, '')
+    .replace(/<li[^>]*><p>\s*<\/p><\/li>/g, '')
+    .replace(/<li[^>]*><p><br[^>]*><\/p><\/li>/gi, '')
+    .replace(/<li[^>]*><p><br[^>]*class="[^"]*ProseMirror-trailingBreak[^"]*"[^>]*><\/p><\/li>/gi, '')
+    .replace(/<li[^>]*><p><br[^>]*><br[^>]*class="[^"]*ProseMirror-trailingBreak[^"]*"[^>]*><\/p><\/li>/gi, '');
 
   // Convert image paths to Tauri asset URLs AFTER paragraph processing
   if (markdownPath) {

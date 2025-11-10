@@ -89,7 +89,7 @@
   
   .ProseMirror ul,
   .ProseMirror ol {
-    padding-left: var(--editor-list-padding);
+    padding-left: var(--editor-list-padding) !important;
   }
   
   .ProseMirror ul {
@@ -98,6 +98,7 @@
   
   .ProseMirror ol {
     list-style-type: decimal;
+    padding-left: var(--editor-list-padding) !important;
   }
 
   /* Regular list items - match task item spacing and structure */
@@ -169,6 +170,20 @@
   .ProseMirror ul:not([data-type="taskList"]) > li > * > *,
   .ProseMirror ol > li > * > * {
     display: inline !important;
+  }
+
+  /* Hide trailing breaks in list items */
+  .ProseMirror ul:not([data-type="taskList"]) > li > p:has(br.ProseMirror-trailingBreak),
+  .ProseMirror ol > li > p:has(br.ProseMirror-trailingBreak),
+  .ProseMirror ul:not([data-type="taskList"]) > li > p:empty,
+  .ProseMirror ol > li > p:empty {
+    display: none !important;
+  }
+
+  /* Hide paragraphs that only contain trailing breaks in list items */
+  .ProseMirror ul:not([data-type="taskList"]) > li > p br.ProseMirror-trailingBreak,
+  .ProseMirror ol > li > p br.ProseMirror-trailingBreak {
+    display: none !important;
   }
   
   .ProseMirror blockquote {
