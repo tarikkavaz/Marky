@@ -350,7 +350,7 @@ fn create_window_with_file(
             // Otherwise, create a new window
             let url = WebviewUrl::App("/".into());
             
-            let mut builder = WebviewWindowBuilder::new(app_handle, &label, url)
+            let builder = WebviewWindowBuilder::new(app_handle, &label, url)
                 .title(&title)
                 .inner_size(800.0, 1000.0)
                 .decorations(true)
@@ -359,10 +359,9 @@ fn create_window_with_file(
                 .resizable(true);
             
             #[cfg(target_os = "macos")]
-            {
-                builder = builder.title_bar_style(tauri::TitleBarStyle::Visible);
-                builder = builder.hidden_title(false);
-            }
+            let builder = builder
+                .title_bar_style(tauri::TitleBarStyle::Visible)
+                .hidden_title(false);
             
             let window_result = builder
                 .initialization_script(&init_script)
