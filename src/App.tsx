@@ -11,8 +11,10 @@ import {
   type FileState,
 } from './lib/fileOperations';
 import { windowManager, getCurrentWindowLabel, closeCurrentWindow } from './lib/windowManager';
+import { startWatching, stopWatching, onFileChanged, onFileDeleted } from './lib/fileWatcher';
 import { Button } from './components/ui/button';
 import { UnsavedChangesDialog } from './components/dialogs/UnsavedChangesDialog';
+import { ExternalFileChangeDialog } from './components/dialogs/ExternalFileChangeDialog';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -41,6 +43,14 @@ function App() {
   const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
   const [pendingAction, setPendingAction] = useState<'close' | 'quit' | 'open' | null>(null);
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [showExternalChangeDialog, setShowExternalChangeDialog] = useState(false);
+  const [externalChangeFilePath, setExternalChangeFilePath] = useState<string | null>(null);
+  
+  // Refs for file watcher cleanup
+  const fileChangeUnlistenRef = useRef<(() => void) | null>(null);
+  const fileDeleteUnlistenRef = useRef<(() => void) | null>(null);
+  // Track when we last saved to ignore immediate file change events
+  const lastSaveTimeRef = useRef<number>(0);
 
   // Use ref to track current unsaved changes state for the close handler
   const hasUnsavedChangesRef = useRef(fileState.hasUnsavedChanges);
@@ -56,6 +66,111 @@ function App() {
   useEffect(() => {
     editorRef.current = editor;
   }, [editor]);
+
+  // Setup file watcher listeners
+  useEffect(() => {
+    async function setupFileWatchers() {
+      try {
+        // Listen for file changes
+        const unlistenChanged = await onFileChanged(async (filePath) => {
+          // Only handle if this is the current file
+          if (fileStateRef.current.path === filePath) {
+            // Ignore changes that happen within 500ms of our last save (to avoid reload loops)
+            const timeSinceLastSave = Date.now() - lastSaveTimeRef.current;
+            if (timeSinceLastSave < 500) {
+              return;
+            }
+
+            // If no unsaved changes, auto-reload immediately
+            if (!fileStateRef.current.hasUnsavedChanges) {
+              try {
+                const result = await loadFileFromPath(filePath);
+                if (result) {
+                  setFileState({
+                    path: result.path,
+                    content: result.content,
+                    hasUnsavedChanges: false,
+                  });
+                  // Update editor content
+                  if (editorRef.current) {
+                    editorRef.current.commands.setContent(result.content);
+                  }
+                }
+              } catch (error) {
+                console.error('Failed to auto-reload file:', error);
+              }
+            } else {
+              // Show dialog if there are unsaved changes
+              setExternalChangeFilePath(filePath);
+              setShowExternalChangeDialog(true);
+            }
+          }
+        });
+        fileChangeUnlistenRef.current = unlistenChanged;
+
+        // Listen for file deletions
+        const unlistenDeleted = await onFileDeleted(async (filePath) => {
+          // Only handle if this is the current file
+          if (fileStateRef.current.path === filePath) {
+            // Stop watching
+            await stopWatching(filePath);
+            // Show notification (could be enhanced with a toast)
+            alert(`The file "${filePath}" has been deleted.`);
+            // Clear the file state
+            setFileState({
+              path: null,
+              content: '',
+              hasUnsavedChanges: false,
+            });
+          }
+        });
+        fileDeleteUnlistenRef.current = unlistenDeleted;
+      } catch (error) {
+        console.error('Failed to setup file watchers:', error);
+      }
+    }
+
+    setupFileWatchers();
+
+    return () => {
+      // Cleanup listeners
+      if (fileChangeUnlistenRef.current) {
+        fileChangeUnlistenRef.current();
+        fileChangeUnlistenRef.current = null;
+      }
+      if (fileDeleteUnlistenRef.current) {
+        fileDeleteUnlistenRef.current();
+        fileDeleteUnlistenRef.current = null;
+      }
+    };
+  }, []);
+
+  // Watch/unwatch file when fileState.path changes
+  useEffect(() => {
+    async function updateFileWatcher() {
+      const currentPath = fileState.path;
+      
+      // Stop watching previous file if any
+      if (fileStateRef.current.path && fileStateRef.current.path !== currentPath) {
+        try {
+          await stopWatching(fileStateRef.current.path);
+        } catch (error) {
+          console.error('Failed to stop watching file:', error);
+        }
+      }
+
+      // Start watching new file if any
+      if (currentPath) {
+        try {
+          await startWatching(currentPath);
+        } catch (error) {
+          console.error('Failed to start watching file:', error);
+        }
+      }
+    }
+
+    updateFileWatcher();
+  }, [fileState.path]);
 
   // Initialize window and load file from URL params
   useEffect(() => {
@@ -83,6 +198,7 @@ function App() {
               hasUnsavedChanges: false,
             });
             await windowManager.updateWindowTitle(label, result.path);
+            // File watcher will be started by the useEffect above
           }
         } else if (!isRestore && label === 'main') {
           // Only restore session on the main window and if not already restoring
@@ -91,6 +207,15 @@ function App() {
 
         // Setup close request handler
         await currentWindow.onCloseRequested(async (event) => {
+          // Stop watching before closing
+          if (fileStateRef.current.path) {
+            try {
+              await stopWatching(fileStateRef.current.path);
+            } catch (error) {
+              console.error('Failed to stop watching on close:', error);
+            }
+          }
+
           if (hasUnsavedChangesRef.current) {
             event.preventDefault();
             setPendingAction('close');
@@ -104,7 +229,13 @@ function App() {
         // Update windows menu periodically
         updateWindowsMenu();
         const interval = setInterval(updateWindowsMenu, 2000);
-        return () => clearInterval(interval);
+        return () => {
+          clearInterval(interval);
+          // Cleanup: stop watching on unmount
+          if (fileStateRef.current.path) {
+            stopWatching(fileStateRef.current.path).catch(console.error);
+          }
+        };
       } catch (error) {
         console.error('Failed to initialize window:', error);
       }
@@ -151,6 +282,15 @@ function App() {
   };
 
   const executeOpen = async () => {
+    // Stop watching current file before opening new one
+    if (fileState.path) {
+      try {
+        await stopWatching(fileState.path);
+      } catch (error) {
+        console.error('Failed to stop watching file:', error);
+      }
+    }
+
     const result = await openFile();
     if (result) {
       setFileState({
@@ -162,6 +302,7 @@ function App() {
       if (windowLabel) {
         await windowManager.updateWindowTitle(windowLabel, result.path);
       }
+      // File watcher will be started by the useEffect above
     }
   };
 
@@ -198,6 +339,15 @@ function App() {
   };
 
   const executeClose = async () => {
+    // Stop watching before closing
+    if (fileState.path) {
+      try {
+        await stopWatching(fileState.path);
+      } catch (error) {
+        console.error('Failed to stop watching on close:', error);
+      }
+    }
+
     // Clear unsaved changes flag BEFORE closing to prevent onCloseRequested from blocking
     hasUnsavedChangesRef.current = false;
     setFileState(prev => ({ ...prev, hasUnsavedChanges: false }));
@@ -234,6 +384,9 @@ function App() {
       const currentContent = editor?.getHTML() || fileState.content;
       const savedPath = await saveFile(currentContent, fileState.path);
       if (savedPath) {
+        // Update last save time to ignore immediate file change events
+        lastSaveTimeRef.current = Date.now();
+        
         hasUnsavedChangesRef.current = false;
         setFileState(prev => ({
           ...prev,
@@ -257,6 +410,9 @@ function App() {
       const currentContent = editor?.getHTML() || fileState.content;
       const savedPath = await saveFileAs(currentContent);
       if (savedPath) {
+        // Update last save time to ignore immediate file change events
+        lastSaveTimeRef.current = Date.now();
+        
         hasUnsavedChangesRef.current = false;
         setFileState(prev => ({
           ...prev,
@@ -489,6 +645,46 @@ function App() {
           setShowUnsavedDialog(false);
           setPendingAction(null);
         }}
+      />
+
+      {/* External File Change Dialog */}
+      <ExternalFileChangeDialog
+        open={showExternalChangeDialog}
+        onOpenChange={setShowExternalChangeDialog}
+        onReload={async () => {
+          setShowExternalChangeDialog(false);
+          if (externalChangeFilePath) {
+            try {
+              const result = await loadFileFromPath(externalChangeFilePath);
+              if (result) {
+                setFileState({
+                  path: result.path,
+                  content: result.content,
+                  hasUnsavedChanges: false,
+                });
+                // Update editor content
+                if (editor) {
+                  editor.commands.setContent(result.content);
+                }
+              }
+            } catch (error) {
+              console.error('Failed to reload file:', error);
+            }
+          }
+          setExternalChangeFilePath(null);
+        }}
+        onKeepCurrent={() => {
+          setShowExternalChangeDialog(false);
+          setExternalChangeFilePath(null);
+          // Keep watching for future changes
+        }}
+        onCancel={() => {
+          setShowExternalChangeDialog(false);
+          setExternalChangeFilePath(null);
+          // Keep watching for future changes
+        }}
+        filePath={externalChangeFilePath || ''}
+        hasUnsavedChanges={fileState.hasUnsavedChanges}
       />
     </div>
   );
