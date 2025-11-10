@@ -585,14 +585,31 @@
 
   .ProseMirror .alert-body {
     margin-top: 0;
+    padding-top: 0;
     padding-bottom: 0;
     margin-bottom: 0;
   }
 
+  /* Remove all margins/padding from nested content divs */
+  .ProseMirror .alert-body > div,
+  .ProseMirror .alert-body > div > div {
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
   /* Reduce spacing for paragraphs inside alerts */
   .ProseMirror .alert-body p {
-    margin-top: 0;
-    margin-bottom: 0.5rem;
+    margin-top: 0 !important;
+    margin-bottom: 0.25rem !important;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+  }
+
+  /* First paragraph should have no top margin */
+  .ProseMirror .alert-body p:first-child,
+  .ProseMirror .alert-body p:first-of-type {
+    margin-top: 0 !important;
+    padding-top: 0 !important;
   }
 
   /* Override user agent styles for last paragraph */
@@ -613,6 +630,13 @@
     padding-top: 0 !important;
   }
 
+  /* Remove top spacing from any first child in alert body */
+  .ProseMirror .alert-body > *:first-child,
+  .ProseMirror .alert-body > *:first-of-type {
+    margin-top: 0 !important;
+    padding-top: 0 !important;
+  }
+
   /* Remove bottom margin from alert wrapper's last child */
   .ProseMirror .alert-content > *:last-child,
   .ProseMirror .alert-content > *:last-of-type {
@@ -622,7 +646,8 @@
 
   /* Override any default spacing on alert-body's direct children */
   .ProseMirror .alert-body > * {
-    margin-bottom: 0.5rem;
+    margin-bottom: 0.25rem !important;
+    margin-top: 0 !important;
   }
 
   .ProseMirror .alert-body > *:last-child,
@@ -635,6 +660,12 @@
   .ProseMirror .alert-wrapper .alert-body *:last-of-type {
     margin-bottom: 0 !important;
     padding-bottom: 0 !important;
+  }
+
+  .ProseMirror .alert-wrapper .alert-body *:first-child,
+  .ProseMirror .alert-wrapper .alert-body *:first-of-type {
+    margin-top: 0 !important;
+    padding-top: 0 !important;
   }
 
   /* Ensure alert-body itself has no bottom spacing */
