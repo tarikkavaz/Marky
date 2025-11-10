@@ -5,7 +5,10 @@ use std::fs;
 use std::path::PathBuf;
 use std::sync::{mpsc, Mutex};
 use std::time::Duration;
+#[cfg(any(target_os = "macos", target_os = "ios"))]
 use tauri::{Emitter, Manager, RunEvent, State, WebviewUrl, WebviewWindowBuilder};
+#[cfg(not(any(target_os = "macos", target_os = "ios")))]
+use tauri::{Emitter, Manager, State, WebviewUrl, WebviewWindowBuilder};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct WindowInfo {
@@ -347,14 +350,20 @@ fn create_window_with_file(
             // Otherwise, create a new window
             let url = WebviewUrl::App("/".into());
             
-            let window_result = WebviewWindowBuilder::new(app_handle, &label, url)
+            let mut builder = WebviewWindowBuilder::new(app_handle, &label, url)
                 .title(&title)
                 .inner_size(800.0, 1000.0)
                 .decorations(true)
                 .transparent(true)
                 .center()
-                .resizable(true)
-                .title_bar_style(tauri::TitleBarStyle::Visible)
+                .resizable(true);
+            
+            #[cfg(target_os = "macos")]
+            {
+                builder = builder.title_bar_style(tauri::TitleBarStyle::Visible);
+            }
+            
+            let window_result = builder
                 .hidden_title(false)
                 .initialization_script(&init_script)
                 .build();
@@ -473,6 +482,8 @@ pub fn run() {
         .build(tauri::generate_context!())
         .expect("error while running tauri application")
         .run(|app_handle, event| {
+            #[cfg(not(any(target_os = "macos", target_os = "ios")))]
+            let _ = (app_handle, event);
             // Handle file open events when app is already running (macOS/iOS Apple Events)
             // Also handles when app is launched fresh with a file on macOS
             #[cfg(any(target_os = "macos", target_os = "ios"))]
