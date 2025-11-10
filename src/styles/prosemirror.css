@@ -509,20 +509,50 @@
     border-left-color: #3b82f6; /* blue */
   }
 
+  .ProseMirror .alert-wrapper.alert-note .alert-body,
+  .ProseMirror .alert-wrapper.alert-note .alert-body p,
+  .ProseMirror .alert-wrapper.alert-note .alert-body * {
+    color: #93c5fd !important; /* light blue - readable on dark background */
+  }
+
   .ProseMirror .alert-wrapper.alert-tip {
     border-left-color: #10b981; /* green */
+  }
+
+  .ProseMirror .alert-wrapper.alert-tip .alert-body,
+  .ProseMirror .alert-wrapper.alert-tip .alert-body p,
+  .ProseMirror .alert-wrapper.alert-tip .alert-body * {
+    color: #86efac !important; /* light green - readable on dark background */
   }
 
   .ProseMirror .alert-wrapper.alert-important {
     border-left-color: #a855f7; /* purple */
   }
 
+  .ProseMirror .alert-wrapper.alert-important .alert-body,
+  .ProseMirror .alert-wrapper.alert-important .alert-body p,
+  .ProseMirror .alert-wrapper.alert-important .alert-body * {
+    color: #c4b5fd !important; /* light purple - readable on dark background */
+  }
+
   .ProseMirror .alert-wrapper.alert-warning {
     border-left-color: #f59e0b; /* orange */
   }
 
+  .ProseMirror .alert-wrapper.alert-warning .alert-body,
+  .ProseMirror .alert-wrapper.alert-warning .alert-body p,
+  .ProseMirror .alert-wrapper.alert-warning .alert-body * {
+    color: #fcd34d !important; /* light yellow/orange - readable on dark background */
+  }
+
   .ProseMirror .alert-wrapper.alert-caution {
     border-left-color: #ef4444; /* red */
+  }
+
+  .ProseMirror .alert-wrapper.alert-caution .alert-body,
+  .ProseMirror .alert-wrapper.alert-caution .alert-body p,
+  .ProseMirror .alert-wrapper.alert-caution .alert-body * {
+    color: #fca5a5 !important; /* light red - readable on dark background */
   }
 
   .ProseMirror .alert-content {
