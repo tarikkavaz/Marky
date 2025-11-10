@@ -13,30 +13,51 @@ export default defineConfig({
     },
   },
   build: {
-    chunkSizeWarningLimit: 1000,
-    // Temporarily removed manualChunks to test if it's causing production issues
-    // rollupOptions: {
-    //   output: {
-    //     manualChunks: {
-    //       'tiptap': [
-    //         '@tiptap/react',
-    //         '@tiptap/starter-kit',
-    //         '@tiptap/core',
-    //       ],
-    //       'tiptap-extensions': [
-    //         '@tiptap/extension-code-block-lowlight',
-    //         '@tiptap/extension-image',
-    //         '@tiptap/extension-link',
-    //         '@tiptap/extension-placeholder',
-    //         '@tiptap/extension-table',
-    //         '@tiptap/extension-table-cell',
-    //         '@tiptap/extension-table-header',
-    //         '@tiptap/extension-table-row',
-    //         '@tiptap/extension-typography',
-    //         '@tiptap/extension-underline',
-    //       ],
-    //     },
-    //   },
-    // },
+    chunkSizeWarningLimit: 1500,
+    rollupOptions: {
+      output: {
+        manualChunks: (id) => {
+          // Split TipTap core and React integration
+          if (id.includes('@tiptap/react') || id.includes('@tiptap/core') || id.includes('@tiptap/pm')) {
+            return 'tiptap-core';
+          }
+          
+          // Split TipTap starter kit
+          if (id.includes('@tiptap/starter-kit')) {
+            return 'tiptap-starter';
+          }
+          
+          // Split TipTap extensions
+          if (id.includes('@tiptap/extension-')) {
+            return 'tiptap-extensions';
+          }
+          
+          // Split Radix UI components
+          if (id.includes('@radix-ui/')) {
+            return 'radix-ui';
+          }
+          
+          // Split Tauri APIs
+          if (id.includes('@tauri-apps/')) {
+            return 'tauri';
+          }
+          
+          // Split markdown processing libraries
+          if (id.includes('turndown') || id.includes('markdown-it') || id.includes('remark') || id.includes('unified')) {
+            return 'markdown';
+          }
+          
+          // Split syntax highlighting
+          if (id.includes('lowlight')) {
+            return 'lowlight';
+          }
+          
+          // Split React and React DOM into vendor chunk
+          if (id.includes('react') || id.includes('react-dom')) {
+            return 'react-vendor';
+          }
+        },
+      },
+    },
   },
 })
