@@ -135,7 +135,10 @@ function fixNestedListIndentation(markdown: string): string {
           // Only treat as nested if it has more indent
           if (nextIndentLevel > indentLevel) {
             // This is a nested item - remove empty lines and fix indentation
-            const expectedNestedIndent = indentLevel + 2;
+            // Use 3 spaces for ol/ul items, 2 spaces for task items
+            const isTaskItem = taskItemMatch !== null;
+            const indentIncrement = isTaskItem ? 2 : 3;
+            const expectedNestedIndent = indentLevel + indentIncrement;
             const fixedNextLine = nextLine.replace(/^(\s*)/, ' '.repeat(expectedNestedIndent));
             
             result.push(line);
@@ -146,13 +149,14 @@ function fixNestedListIndentation(markdown: string): string {
             let k = j + 1;
             while (k < lines.length) {
               const nestedLine = lines[k];
-              const nestedMatch = nestedLine.match(/^(\s*)([-*]|\d+\.)\s+(.+)$/) || 
-                                  nestedLine.match(/^(\s*)- \[([ x])\]\s+(.+)$/);
+              const nestedListItemMatch = nestedLine.match(/^(\s*)([-*]|\d+\.)\s+(.+)$/);
+              const nestedTaskItemMatch = nestedLine.match(/^(\s*)- \[([ x])\]\s+(.+)$/);
+              const nestedMatch = nestedListItemMatch || nestedTaskItemMatch;
               
               if (nestedMatch) {
                 const nestedIndentLevel = nestedMatch[1].length;
                 if (nestedIndentLevel > indentLevel) {
-                  // Still nested - fix indentation
+                  // Still nested - fix indentation (use same increment as parent)
                   const fixedNestedLine = nestedLine.replace(/^(\s*)/, ' '.repeat(expectedNestedIndent));
                   result.push(fixedNestedLine);
                   k++;
@@ -167,8 +171,9 @@ function fixNestedListIndentation(markdown: string): string {
                   m++;
                 }
                 if (m < lines.length) {
-                  const afterEmptyMatch = lines[m].match(/^(\s*)([-*]|\d+\.)\s+(.+)$/) ||
-                                         lines[m].match(/^(\s*)- \[([ x])\]\s+(.+)$/);
+                  const afterEmptyListItemMatch = lines[m].match(/^(\s*)([-*]|\d+\.)\s+(.+)$/);
+                  const afterEmptyTaskItemMatch = lines[m].match(/^(\s*)- \[([ x])\]\s+(.+)$/);
+                  const afterEmptyMatch = afterEmptyListItemMatch || afterEmptyTaskItemMatch;
                   if (afterEmptyMatch && afterEmptyMatch[1].length > indentLevel) {
                     // Still nested, skip empty line
                     k = m;
@@ -213,9 +218,9 @@ turndownService.addRule('listItem', {
            (node.parentNode as HTMLElement).getAttribute('data-type') !== 'taskList';
   },
   replacement: (content, node) => {
-    // Calculate nesting level and add appropriate indentation (2 spaces per level)
+    // Calculate nesting level and add appropriate indentation (3 spaces per level for ol/ul)
     const level = getNestingLevel(node);
-    const indent = '  '.repeat(level);
+    const indent = '   '.repeat(level);
     
     // Check if this list item contains a nested list
     const hasNestedList = (node as HTMLElement).querySelector('ul, ol');
@@ -239,13 +244,13 @@ turndownService.addRule('listItem', {
         const isListItem = /^\s*([-*]|\d+\.)\s+/.test(trimmed);
         
         if (isListItem && !inNestedList) {
-          // Start of nested list - add proper indentation
+          // Start of nested list - add proper indentation (3 spaces)
           inNestedList = true;
-          const nestedIndent = indent + '  ';
+          const nestedIndent = indent + '   ';
           processedLines.push(nestedIndent + trimmed);
         } else if (isListItem && inNestedList) {
-          // Continue nested list - add proper indentation
-          const nestedIndent = indent + '  ';
+          // Continue nested list - add proper indentation (3 spaces)
+          const nestedIndent = indent + '   ';
           processedLines.push(nestedIndent + trimmed);
         } else if (trimmed === '' && inNestedList) {
           // Empty line in nested list - skip it to avoid extra spacing
