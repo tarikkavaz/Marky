@@ -3,6 +3,7 @@ import { open, message } from '@tauri-apps/plugin-dialog';
 import { readFile } from '@tauri-apps/plugin-fs';
 import { TextSelection } from '@tiptap/pm/state';
 import type { AlertType } from '../Alert/AlertComponent';
+import { saveImageForMarkdown } from '../../../lib/imageHandler';
 
 // Formatting commands
 export const createFormattingCommands = (editor: Editor) => ({
@@ -149,7 +150,7 @@ export const createFormattingCommands = (editor: Editor) => ({
 });
 
 // Insertion commands
-export const createInsertionCommands = (editor: Editor) => ({
+export const createInsertionCommands = (editor: Editor, currentFilePath?: string | null) => ({
   insertImage: async () => {
     try {
       const filePath = await open({
@@ -161,6 +162,9 @@ export const createInsertionCommands = (editor: Editor) => ({
       });
       
       if (filePath && typeof filePath === 'string') {
+        // Save image to appropriate location (relative path or temp)
+        const imageResult = await saveImageForMarkdown(filePath, currentFilePath || null);
+        
         // Read the image and convert to base64 for display
         const imageData = await readFile(filePath);
         
@@ -172,18 +176,29 @@ export const createInsertionCommands = (editor: Editor) => ({
         const base64 = btoa(String.fromCharCode(...imageData));
         const dataUrl = `data:${mimeType};base64,${base64}`;
         
-        // Insert image with base64 src
-        editor.chain().focus().setImage({ 
-          src: dataUrl
-        }).run();
+        // Return image data to show alt text dialog
+        return {
+          dataUrl,
+          path: imageResult.path,
+        };
       }
+      return null;
     } catch (error) {
       console.error('Failed to insert image:', error);
       await message('Failed to insert image. Please try again.', {
         title: 'Error',
         kind: 'error'
       });
+      return null;
     }
+  },
+
+  setImage: (dataUrl: string, path: string, alt: string = '') => {
+    editor.chain().focus().setImage({ 
+      src: dataUrl,
+      'data-original-src': path,
+      alt: alt
+    }).run();
   },
 
   insertLink: async () => {

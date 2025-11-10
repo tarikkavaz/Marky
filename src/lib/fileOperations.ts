@@ -1,10 +1,10 @@
 import { open, save } from '@tauri-apps/plugin-dialog';
 import { readTextFile, writeTextFile, readFile } from '@tauri-apps/plugin-fs';
-import { dirname } from '@tauri-apps/api/path';
+import { dirname, join } from '@tauri-apps/api/path';
 import TurndownService from 'turndown';
 // @ts-ignore - no types available for turndown-plugin-gfm
 import { tables } from 'turndown-plugin-gfm';
-import { imageUrlToMarkdownPath } from './imageHandler';
+import { imageUrlToMarkdownPath, convertAbsoluteToRelativePath, markdownPathToImageUrl, moveTempImagesToMarkdownDir } from './imageHandler';
 
 export interface FileState {
   path: string | null;
@@ -729,7 +729,7 @@ export async function markdownToHTML(markdown: string, markdownPath: string | nu
 }
 
 // Helper function to convert image paths to base64 data URLs while preserving original path
-async function convertImagePathsToUrls(html: string, _markdownPath: string): Promise<string> {
+async function convertImagePathsToUrls(html: string, markdownPath: string): Promise<string> {
   const imgRegex = /<img([^>]*?)src="([^"]+)"([^>]*?)>/g;
   const matches = [...html.matchAll(imgRegex)];
   
@@ -747,22 +747,38 @@ async function convertImagePathsToUrls(html: string, _markdownPath: string): Pro
       continue;
     }
     
+    // Resolve relative paths to absolute paths
+    let absolutePath = src;
+    let originalPath = src; // Keep original relative path for data-original-src
+    
+    if (src.startsWith('./') || src.startsWith('../')) {
+      // Relative path - resolve to absolute
+      const markdownDir = await dirname(markdownPath);
+      absolutePath = await join(markdownDir, src.replace(/^\.\//, ''));
+      originalPath = src; // Keep relative path
+    } else if (!src.startsWith('/')) {
+      // Might be a relative path without ./ prefix
+      const markdownDir = await dirname(markdownPath);
+      absolutePath = await join(markdownDir, src);
+      originalPath = `./${src}`; // Store as relative
+    }
+    
     // Convert to base64 data URL but preserve original path in data attribute
     try {
-      const imageData = await readFile(src);
+      const imageData = await readFile(absolutePath);
       
       // Detect image type from extension
-      const ext = src.split('.').pop()?.toLowerCase() || 'png';
+      const ext = absolutePath.split('.').pop()?.toLowerCase() || 'png';
       const mimeType = ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg' : `image/${ext}`;
       
       // Convert to base64
       const base64 = btoa(String.fromCharCode(...imageData));
       const dataUrl = `data:${mimeType};base64,${base64}`;
       
-      // Store original path in data-original-src attribute
-      result = result.replace(fullMatch, `<img${before}src="${dataUrl}" data-original-src="${src}"${after}>`);
+      // Store original path (relative if possible) in data-original-src attribute
+      result = result.replace(fullMatch, `<img${before}src="${dataUrl}" data-original-src="${originalPath}"${after}>`);
     } catch (error) {
-      console.error(`Failed to load image ${src}:`, error);
+      console.error(`Failed to load image ${absolutePath}:`, error);
       // Keep original if conversion fails
     }
   }
@@ -788,25 +804,44 @@ export async function htmlToMarkdown(html: string, markdownPath: string | null):
       }
     }
     
-    // Restore original file paths from data-original-src attribute
+    // Restore original file paths from data-original-src attribute and convert to relative paths
     let processedHtml = html;
     if (markdownPath) {
       const markdownDir = await dirname(markdownPath);
       // Find all img tags with src
-      processedHtml = html.replace(/<img([^>]*?)src="([^"]+)"([^>]*?)>/g, (match, before, src, after) => {
+      const imgRegex = /<img([^>]*?)src="([^"]+)"([^>]*?)>/g;
+      const matches = [...html.matchAll(imgRegex)];
+      
+      for (const match of matches) {
+        const [fullMatch, before, src, after] = match;
         // Check if data-original-src attribute exists
-        const dataOriginalMatch = match.match(/data-original-src="([^"]+)"/);
-        const originalSrc = dataOriginalMatch ? dataOriginalMatch[1] : src;
+        const dataOriginalMatch = fullMatch.match(/data-original-src="([^"]+)"/);
+        let imagePath = dataOriginalMatch ? dataOriginalMatch[1] : imageUrlToMarkdownPath(src, markdownDir);
         
-        // Use the original path if available, otherwise try to convert the src
-        const absolutePath = dataOriginalMatch ? originalSrc : imageUrlToMarkdownPath(src, markdownDir);
+        // Convert absolute paths to relative paths
+        if (imagePath.startsWith('/') && !imagePath.startsWith('./') && !imagePath.startsWith('../')) {
+          imagePath = await convertAbsoluteToRelativePath(imagePath, markdownPath);
+        }
         
-        // Remove data-original-src from the output
+        // Extract alt attribute if present
+        const altMatch = fullMatch.match(/alt="([^"]*)"/);
+        const alt = altMatch ? altMatch[1] : '';
+        
+        // If it's already a relative path, keep it
+        // Remove data-original-src from the output, but preserve alt
         const cleanedBefore = before.replace(/\s*data-original-src="[^"]*"/, '');
         const cleanedAfter = after.replace(/\s*data-original-src="[^"]*"/, '');
         
-        return `<img${cleanedBefore}src="${absolutePath}"${cleanedAfter}>`;
-      });
+        // Reconstruct img tag with updated src and preserved alt
+        const altAttr = alt ? ` alt="${alt}"` : '';
+        processedHtml = processedHtml.replace(
+          fullMatch,
+          `<img${cleanedBefore}src="${imagePath}"${altAttr}${cleanedAfter}>`
+        );
+      }
+    } else {
+      // No markdown path - keep absolute paths or temp paths as-is for now
+      // They will be converted when the file is saved
     }
     
     // Preserve alerts before processing (extract and restore like footnotes)
@@ -1228,6 +1263,7 @@ export async function openFile(): Promise<{ path: string; content: string } | nu
 export async function saveFile(content: string, currentPath: string | null): Promise<string | null> {
   try {
     let filePath = currentPath;
+    let isNewFile = false;
 
     if (!filePath) {
       filePath = await save({
@@ -1242,6 +1278,12 @@ export async function saveFile(content: string, currentPath: string | null): Pro
       if (!filePath || typeof filePath !== 'string') {
         return null;
       }
+      isNewFile = true;
+    }
+
+    // If this is a new file or we have temp images, move them to the markdown directory
+    if (isNewFile || content.includes('temp_images')) {
+      content = await moveTempImagesToMarkdownDir(content, filePath);
     }
 
     // Convert HTML to Markdown before saving
@@ -1267,6 +1309,11 @@ export async function saveFileAs(content: string): Promise<string | null> {
 
     if (!filePath || typeof filePath !== 'string') {
       return null;
+    }
+
+    // Move temp images to the new markdown directory
+    if (content.includes('temp_images')) {
+      content = await moveTempImagesToMarkdownDir(content, filePath);
     }
 
     // Convert HTML to Markdown before saving

@@ -18,6 +18,7 @@ interface InputDialogProps {
   defaultValue?: string;
   placeholder?: string;
   onSubmit: (value: string) => void;
+  allowEmpty?: boolean; // Allow empty submissions
 }
 
 export function InputDialog({
@@ -28,12 +29,13 @@ export function InputDialog({
   defaultValue = '',
   placeholder,
   onSubmit,
+  allowEmpty = false,
 }: InputDialogProps) {
   const [value, setValue] = useState(defaultValue);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (value.trim()) {
+    if (allowEmpty || value.trim()) {
       onSubmit(value);
       setValue('');
       onOpenChange(false);

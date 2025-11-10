@@ -37,16 +37,19 @@ import { ToolbarInsert, type ToolbarInsertRef } from './ToolbarInsert';
 import { ToolbarDropdown } from './ToolbarDropdown';
 import { createFormattingCommands, createInsertionCommands } from '../editor/utils/commands';
 import { FootnoteDialog } from '../dialogs/FootnoteDialog';
+import { InputDialog } from '../dialogs/InputDialog';
 
 interface ToolbarProps {
   editor: Editor | null;
   currentFilePath: string | null;
 }
 
-export function Toolbar({ editor }: ToolbarProps) {
+export function Toolbar({ editor, currentFilePath }: ToolbarProps) {
   const [, setUpdateTrigger] = useState(0);
   const insertRef = useRef<ToolbarInsertRef>(null);
   const [footnoteDialogOpen, setFootnoteDialogOpen] = useState(false);
+  const [imageDialogOpen, setImageDialogOpen] = useState(false);
+  const [pendingImageData, setPendingImageData] = useState<{ dataUrl: string; path: string } | null>(null);
 
   // Force toolbar to re-render when editor selection changes
   useEffect(() => {
@@ -70,10 +73,21 @@ export function Toolbar({ editor }: ToolbarProps) {
   }
 
   const formatting = createFormattingCommands(editor);
-  const insertion = createInsertionCommands(editor);
+  const insertion = createInsertionCommands(editor, currentFilePath);
 
   const handleInsertImage = async () => {
-    await insertion.insertImage();
+    const imageData = await insertion.insertImage();
+    if (imageData) {
+      setPendingImageData(imageData);
+      setImageDialogOpen(true);
+    }
+  };
+
+  const handleImageAltSubmit = (alt: string) => {
+    if (pendingImageData) {
+      insertion.setImage(pendingImageData.dataUrl, pendingImageData.path, alt);
+      setPendingImageData(null);
+    }
   };
 
   const handleInsertLink = async () => {
@@ -319,6 +333,21 @@ export function Toolbar({ editor }: ToolbarProps) {
 
       {/* Dialogs */}
       <ToolbarInsert ref={insertRef} editor={editor} />
+      <InputDialog
+        open={imageDialogOpen}
+        onOpenChange={(open) => {
+          setImageDialogOpen(open);
+          if (!open) {
+            setPendingImageData(null);
+          }
+        }}
+        title="Image Alt Text"
+        description="Enter alt text for the image (optional)"
+        placeholder="Image description"
+        defaultValue=""
+        allowEmpty={true}
+        onSubmit={handleImageAltSubmit}
+      />
       <FootnoteDialog
         open={footnoteDialogOpen}
         onOpenChange={setFootnoteDialogOpen}

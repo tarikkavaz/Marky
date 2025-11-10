@@ -60,6 +60,7 @@ interface EditorContextMenuProps {
 export function EditorContextMenu({ 
   editor, 
   children,
+  currentFilePath,
   onGrammarCorrect, 
   onStyleChange 
 }: EditorContextMenuProps) {
@@ -68,13 +69,19 @@ export function EditorContextMenu({
   const [tableColsDialogOpen, setTableColsDialogOpen] = useState(false);
   const [pendingTableRows, setPendingTableRows] = useState<number>(3);
   const [footnoteDialogOpen, setFootnoteDialogOpen] = useState(false);
+  const [imageDialogOpen, setImageDialogOpen] = useState(false);
+  const [pendingImageData, setPendingImageData] = useState<{ dataUrl: string; path: string } | null>(null);
   const [, setUpdateTrigger] = useState(0);
 
   const insertImage = useCallback(async () => {
     if (!editor) return;
-    const insertion = createInsertionCommands(editor);
-    await insertion.insertImage();
-  }, [editor]);
+    const insertion = createInsertionCommands(editor, currentFilePath);
+    const imageData = await insertion.insertImage();
+    if (imageData) {
+      setPendingImageData(imageData);
+      setImageDialogOpen(true);
+    }
+  }, [editor, currentFilePath]);
 
   const insertTable = useCallback(() => {
     setTableRowsDialogOpen(true);
@@ -120,7 +127,7 @@ export function EditorContextMenu({
   }
 
   const formatting = createFormattingCommands(editor);
-  const insertion = createInsertionCommands(editor);
+  const insertion = createInsertionCommands(editor, currentFilePath);
 
   const insertLink = async () => {
     const shouldOpen = await insertion.insertLink();
@@ -131,6 +138,13 @@ export function EditorContextMenu({
 
   const handleLinkSubmit = (url: string) => {
     insertion.setLink(url);
+  };
+
+  const handleImageAltSubmit = (alt: string) => {
+    if (pendingImageData) {
+      insertion.setImage(pendingImageData.dataUrl, pendingImageData.path, alt);
+      setPendingImageData(null);
+    }
   };
 
   const handleTableRowsSubmit = (rows: string) => {
@@ -405,6 +419,21 @@ export function EditorContextMenu({
         placeholder="3"
         defaultValue="3"
         onSubmit={handleTableColsSubmit}
+      />
+      <InputDialog
+        open={imageDialogOpen}
+        onOpenChange={(open) => {
+          setImageDialogOpen(open);
+          if (!open) {
+            setPendingImageData(null);
+          }
+        }}
+        title="Image Alt Text"
+        description="Enter alt text for the image (optional)"
+        placeholder="Image description"
+        defaultValue=""
+        allowEmpty={true}
+        onSubmit={handleImageAltSubmit}
       />
       <FootnoteDialog
         open={footnoteDialogOpen}
