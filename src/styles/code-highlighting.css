@@ -171,3 +171,92 @@
 .ProseMirror .hljs-punctuation {
   color: var(--code-punctuation);
 }
+
+/* Source Editor Styles */
+.source-editor-textarea,
+.source-editor-pre {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 14px;
+  line-height: 1.6;
+  outline: none;
+  border: none;
+  background: transparent;
+  color: inherit;
+}
+
+.source-editor-textarea {
+  resize: none;
+  overflow: hidden;
+  width: 100%;
+  min-height: 100%;
+  padding: 2rem;
+  tab-size: 2;
+}
+
+.source-editor-pre {
+  padding: 2rem;
+  margin: 0;
+  overflow: visible;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+/* Override prismjs theme colors to match app theme */
+.source-editor-pre code[class*="language-"] {
+  color: var(--code-text);
+}
+
+.source-editor-pre .token.comment,
+.source-editor-pre .token.prolog,
+.source-editor-pre .token.doctype,
+.source-editor-pre .token.cdata {
+  color: var(--code-comment);
+}
+
+.source-editor-pre .token.punctuation {
+  color: var(--code-punctuation);
+}
+
+.source-editor-pre .token.property,
+.source-editor-pre .token.tag,
+.source-editor-pre .token.boolean,
+.source-editor-pre .token.number,
+.source-editor-pre .token.constant,
+.source-editor-pre .token.symbol,
+.source-editor-pre .token.deleted {
+  color: var(--code-number);
+}
+
+.source-editor-pre .token.selector,
+.source-editor-pre .token.attr-name,
+.source-editor-pre .token.string,
+.source-editor-pre .token.char,
+.source-editor-pre .token.builtin,
+.source-editor-pre .token.inserted {
+  color: var(--code-string);
+}
+
+.source-editor-pre .token.operator,
+.source-editor-pre .token.entity,
+.source-editor-pre .token.url,
+.source-editor-pre .language-css .token.string,
+.source-editor-pre .style .token.string {
+  color: var(--code-operator);
+}
+
+.source-editor-pre .token.atrule,
+.source-editor-pre .token.attr-value,
+.source-editor-pre .token.keyword {
+  color: var(--code-keyword);
+}
+
+.source-editor-pre .token.function,
+.source-editor-pre .token.class-name {
+  color: var(--code-function);
+}
+
+.source-editor-pre .token.regex,
+.source-editor-pre .token.important,
+.source-editor-pre .token.variable {
+  color: var(--code-variable);
+}

@@ -555,7 +555,7 @@ function parseListBlock(lines: string[], startIndex: number): { html: string; ne
 }
 
 // Convert Markdown to HTML for editor
-async function markdownToHTML(markdown: string, markdownPath: string | null): Promise<string> {
+export async function markdownToHTML(markdown: string, markdownPath: string | null): Promise<string> {
   let html = markdown
     // Headers
     .replace(/^### (.+)$/gm, '<h3>$1</h3>')
@@ -771,7 +771,7 @@ async function convertImagePathsToUrls(html: string, _markdownPath: string): Pro
 }
 
 // Convert HTML to Markdown for saving
-async function htmlToMarkdown(html: string, markdownPath: string | null): Promise<string> {
+export async function htmlToMarkdown(html: string, markdownPath: string | null): Promise<string> {
   try {
     console.log('Starting HTML to Markdown conversion...');
     console.log('Input HTML length:', html.length);

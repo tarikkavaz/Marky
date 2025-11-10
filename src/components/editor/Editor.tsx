@@ -4,15 +4,19 @@ import { EditorContextMenu } from './EditorContextMenu';
 import { createEditorExtensions } from './utils/extensions';
 import { CodeBlockComponent } from './CodeBlock/CodeBlockComponent';
 import { TableComponent } from './Table/TableComponent';
+import { SourceView } from './SourceView';
 
 interface EditorProps {
   content: string;
   onChange: (content: string) => void;
   onEditorReady?: (editor: TipTapEditor) => void;
   currentFilePath?: string | null;
+  showSource?: boolean;
+  markdownContent?: string;
+  onMarkdownChange?: (markdown: string) => void;
 }
 
-export function Editor({ content, onChange, onEditorReady, currentFilePath }: EditorProps) {
+export function Editor({ content, onChange, onEditorReady, currentFilePath, showSource = false, markdownContent = '', onMarkdownChange }: EditorProps) {
   const isUpdatingRef = useRef(false);
   const lastContentRef = useRef(content);
 
@@ -172,6 +176,21 @@ export function Editor({ content, onChange, onEditorReady, currentFilePath }: Ed
     );
   }
 
+  // Show source view if enabled
+  if (showSource && onMarkdownChange) {
+    return (
+      <div className="w-full h-full overflow-hidden">
+        <SourceView
+          markdown={markdownContent}
+          onChange={onMarkdownChange}
+          editor={editor}
+          currentFilePath={currentFilePath}
+        />
+      </div>
+    );
+  }
+
+  // Show preview (normal editor)
   return (
     <div className="w-full h-full overflow-hidden">
       <EditorContextMenu editor={editor} currentFilePath={currentFilePath}>

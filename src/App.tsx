@@ -8,6 +8,8 @@ import {
   saveFileAs,
   exportToHTMLFile,
   loadFileFromPath,
+  htmlToMarkdown,
+  markdownToHTML,
   type FileState,
 } from './lib/fileOperations';
 import { windowManager, getCurrentWindowLabel, closeCurrentWindow } from './lib/windowManager';
@@ -23,7 +25,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuShortcut,
 } from './components/ui/dropdown-menu';
-import { Pencil, FolderOpen, Save, SaveAll, FileCode, FilePlus, X, LayoutGrid, Power } from 'lucide-react';
+import { Pencil, FolderOpen, Save, SaveAll, FileCode, FilePlus, X, LayoutGrid, Power, Code } from 'lucide-react';
 import { type Editor as TipTapEditor } from '@tiptap/react';
 import logo from '/logo.png';
 import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow';
@@ -37,6 +39,8 @@ function App() {
   });
 
   const [showToolbar, setShowToolbar] = useState(false);
+  const [showSource, setShowSource] = useState(false);
+  const [markdownContent, setMarkdownContent] = useState<string>('');
   const [editor, setEditor] = useState<TipTapEditor | null>(null);
   const [windowLabel, setWindowLabel] = useState<string>('');
   const [windowsMenu, setWindowsMenu] = useState<Array<{ label: string; title: string }>>([]);
@@ -51,6 +55,10 @@ function App() {
   const fileDeleteUnlistenRef = useRef<(() => void) | null>(null);
   // Track when we last saved to ignore immediate file change events
   const lastSaveTimeRef = useRef<number>(0);
+  // Debounce timer for real-time sync
+  const syncDebounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const isSyncingRef = useRef(false);
+  const lastMarkdownRef = useRef<string>('');
 
   // Use ref to track current unsaved changes state for the close handler
   const hasUnsavedChangesRef = useRef(fileState.hasUnsavedChanges);
@@ -446,7 +454,89 @@ function App() {
       content: newContent,
       hasUnsavedChanges: prev.content !== newContent && (prev.path !== null || newContent !== ''),
     }));
+
+    // Real-time sync: when HTML changes in preview mode, update markdown
+    if (!showSource && !isSyncingRef.current) {
+      if (syncDebounceTimerRef.current) {
+        clearTimeout(syncDebounceTimerRef.current);
+      }
+      syncDebounceTimerRef.current = setTimeout(async () => {
+        try {
+          isSyncingRef.current = true;
+          const markdown = await htmlToMarkdown(newContent, fileState.path);
+          setMarkdownContent(markdown);
+        } catch (error) {
+          console.error('Failed to sync HTML to markdown:', error);
+        } finally {
+          isSyncingRef.current = false;
+        }
+      }, 300);
+    }
+  }, [showSource, fileState.path]);
+
+  const handleMarkdownChange = useCallback(async (newMarkdown: string) => {
+    lastMarkdownRef.current = newMarkdown;
+    setMarkdownContent(newMarkdown);
+
+    // Real-time sync: when markdown changes in source mode, convert to HTML and update editor
+    if (showSource && !isSyncingRef.current) {
+      if (syncDebounceTimerRef.current) {
+        clearTimeout(syncDebounceTimerRef.current);
+      }
+      syncDebounceTimerRef.current = setTimeout(async () => {
+        try {
+          isSyncingRef.current = true;
+          const html = await markdownToHTML(newMarkdown, fileState.path);
+          
+          // Update editor content
+          if (editor) {
+            editor.commands.setContent(html);
+          }
+          
+          // Update file state
+          setFileState(prev => ({
+            ...prev,
+            content: html,
+            hasUnsavedChanges: prev.content !== html && (prev.path !== null || html !== ''),
+          }));
+        } catch (error) {
+          console.error('Failed to sync markdown to HTML:', error);
+        } finally {
+          isSyncingRef.current = false;
+        }
+      }, 300);
+    }
+  }, [showSource, fileState.path, editor]);
+
+  // Cleanup debounce timer on unmount
+  useEffect(() => {
+    return () => {
+      if (syncDebounceTimerRef.current) {
+        clearTimeout(syncDebounceTimerRef.current);
+      }
+    };
   }, []);
+
+  // Initialize markdown content when file is loaded or content changes externally
+  useEffect(() => {
+    if (fileState.content) {
+      // Always sync markdown when content changes externally (file load, etc.)
+      // Only if we're not currently syncing to avoid loops
+      if (!isSyncingRef.current) {
+        htmlToMarkdown(fileState.content, fileState.path)
+          .then((markdown) => {
+            // Only update if different to avoid unnecessary re-renders
+            if (markdown !== lastMarkdownRef.current) {
+              lastMarkdownRef.current = markdown;
+              setMarkdownContent(markdown);
+            }
+          })
+          .catch((error) => {
+            console.error('Failed to initialize markdown content:', error);
+          });
+      }
+    }
+  }, [fileState.content, fileState.path]);
 
   // Keyboard shortcuts (excluding undo/redo which TipTap handles natively)
   useEffect(() => {
@@ -512,6 +602,41 @@ function App() {
               className="h-8 w-8 p-0"
             >
               <Pencil className="h-4 w-4" />
+            </Button>
+            <Button
+              variant={showSource ? 'default' : 'ghost'}
+              size="sm"
+              onClick={async () => {
+                if (!showSource) {
+                  // Switching to source mode: convert HTML to markdown
+                  if (editor) {
+                    const html = editor.getHTML();
+                    try {
+                      const markdown = await htmlToMarkdown(html, fileState.path);
+                      setMarkdownContent(markdown);
+                      setShowSource(true);
+                    } catch (error) {
+                      console.error('Failed to convert HTML to markdown:', error);
+                    }
+                  } else if (fileState.content) {
+                    // Editor not ready yet, use fileState.content
+                    try {
+                      const markdown = await htmlToMarkdown(fileState.content, fileState.path);
+                      setMarkdownContent(markdown);
+                      setShowSource(true);
+                    } catch (error) {
+                      console.error('Failed to convert HTML to markdown:', error);
+                    }
+                  }
+                } else {
+                  // Switching to preview mode: markdown is already synced
+                  setShowSource(false);
+                }
+              }}
+              title="Toggle Source View"
+              className="h-8 w-8 p-0"
+            >
+              <Code className="h-4 w-4" />
             </Button>
             <div className="w-px h-6 bg-border" />
             <Button
@@ -600,6 +725,9 @@ function App() {
             onChange={handleContentChange}
             onEditorReady={setEditor}
             currentFilePath={fileState.path}
+            showSource={showSource}
+            markdownContent={markdownContent}
+            onMarkdownChange={handleMarkdownChange}
           />
         </main>
       </div>
