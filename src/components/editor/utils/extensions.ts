@@ -116,8 +116,14 @@ export const Alert = Node.create({
     ];
   },
   
-  renderHTML({ HTMLAttributes }) {
-    return ['div', { 'data-alert-type': HTMLAttributes.type || 'note', class: 'alert' }, 0];
+  renderHTML({ HTMLAttributes, node }) {
+    const type = node?.attrs?.type || HTMLAttributes?.type || 'note';
+    return ['div', { 'data-alert-type': type, class: 'alert' }, 0];
+  },
+  
+  toDOM({ node }) {
+    const type = node.attrs.type || 'note';
+    return ['div', { 'data-alert-type': type, class: 'alert' }, 0];
   },
   
   addCommands() {

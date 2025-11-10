@@ -941,24 +941,58 @@ async function htmlToMarkdown(html: string, markdownPath: string | null): Promis
     // We need to properly handle nested divs by finding the matching closing tag
     const alertMatches: Array<{ fullMatch: string; type: string; content: string; index: number }> = [];
     
-    // Find all opening div tags with data-alert-type
-    const alertOpenRegex = /<div([^>]*data-alert-type="([^"]*)"[^>]*)>/gi;
+    // Log sample of HTML to see structure
+    const alertSample = processedHtml.match(/<div[^>]*data-alert-type[^>]*>[\s\S]{0,500}/);
+    if (alertSample) {
+      console.log('Sample alert HTML structure:', alertSample[0]);
+    }
+    
+    // Find all opening div tags with data-alert-type (handle attribute order)
+    const alertOpenRegex = /<div[^>]*>/gi;
     let alertOpenMatch: RegExpExecArray | null;
     const openTags: Array<{ index: number; type: string; openTag: string }> = [];
     
     while ((alertOpenMatch = alertOpenRegex.exec(processedHtml)) !== null) {
-      const type = alertOpenMatch[2];
-      if (type) {
-        openTags.push({
-          index: alertOpenMatch.index,
-          type: type,
-          openTag: alertOpenMatch[0],
-        });
+      const tagContent = alertOpenMatch[0];
+      // Extract data-alert-type attribute value (handle both single and double quotes, any order)
+      let typeMatch = tagContent.match(/data-alert-type="([^"]*)"/);
+      if (!typeMatch) {
+        typeMatch = tagContent.match(/data-alert-type='([^']*)'/);
+      }
+      
+      if (typeMatch && typeMatch[1]) {
+        const type = typeMatch[1].toLowerCase().trim(); // Normalize to lowercase and trim
+        // Only process if it's a valid alert type
+        if (['note', 'tip', 'important', 'warning', 'caution'].includes(type)) {
+          openTags.push({
+            index: alertOpenMatch.index,
+            type: type,
+            openTag: tagContent,
+          });
+          console.log(`Found alert with type: "${type}" at index ${alertOpenMatch.index}, tag: ${tagContent.substring(0, 150)}`);
+        } else {
+          console.warn(`Found alert with invalid type: "${typeMatch[1]}" (normalized: "${type}")`);
+        }
       }
     }
     
+    console.log(`Total alerts found: ${openTags.length}`);
+    
     // For each opening tag, find the matching closing tag by counting div nesting
-    for (const openTag of openTags) {
+    // Process in reverse order of index to handle nested alerts correctly
+    const sortedOpenTags = [...openTags].sort((a, b) => b.index - a.index);
+    
+    for (const openTag of sortedOpenTags) {
+      // Skip if this alert is already nested inside another alert we've found
+      const isNested = alertMatches.some(m => 
+        openTag.index > m.index && openTag.index < m.index + m.fullMatch.length
+      );
+      
+      if (isNested) {
+        console.log(`Skipping nested alert at index ${openTag.index} (type: ${openTag.type})`);
+        continue;
+      }
+      
       let pos = openTag.index + openTag.openTag.length;
       let depth = 1;
       let contentStart = pos;
@@ -979,19 +1013,13 @@ async function htmlToMarkdown(html: string, markdownPath: string | null): Promis
             const content = processedHtml.substring(contentStart, nextClose);
             const fullMatch = processedHtml.substring(openTag.index, nextClose + 6);
             
-            // Check if this alert is nested inside another alert we've already found
-            const isNested = alertMatches.some(m => 
-              m.index < openTag.index && openTag.index < m.index + m.fullMatch.length
-            );
-            
-            if (!isNested) {
-              alertMatches.push({
-                fullMatch,
-                type: openTag.type,
-                content,
-                index: openTag.index,
-              });
-            }
+            alertMatches.push({
+              fullMatch,
+              type: openTag.type,
+              content,
+              index: openTag.index,
+            });
+            console.log(`Extracted alert: type="${openTag.type}", content length=${content.length}`);
             break;
           }
           pos = nextClose + 6;
@@ -1004,6 +1032,22 @@ async function htmlToMarkdown(html: string, markdownPath: string | null): Promis
     
     // Replace alerts in reverse order using substring manipulation
     for (const { fullMatch, type, content, index } of alertMatches) {
+      // Re-extract type from fullMatch to ensure accuracy (in case of nested structures)
+      let extractedType = type;
+      const typeMatchInFull = fullMatch.match(/data-alert-type="([^"]*)"/) || fullMatch.match(/data-alert-type='([^']*)'/);
+      if (typeMatchInFull && typeMatchInFull[1]) {
+        extractedType = typeMatchInFull[1].toLowerCase().trim();
+        if (!['note', 'tip', 'important', 'warning', 'caution'].includes(extractedType)) {
+          console.warn(`Invalid alert type extracted from fullMatch: "${extractedType}", using original: "${type}"`);
+          extractedType = type;
+        } else {
+          console.log(`Re-extracted type from fullMatch: "${extractedType}" (original: "${type}")`);
+        }
+      } else {
+        console.warn(`Could not re-extract type from fullMatch, using original: "${type}"`);
+        console.log(`FullMatch preview: ${fullMatch.substring(0, 200)}`);
+      }
+      
       const placeholder = `__ALERT_${alerts.length}__`;
       
       // Extract text content from HTML, preserving line breaks
@@ -1019,9 +1063,11 @@ async function htmlToMarkdown(html: string, markdownPath: string | null): Promis
       
       // Split into lines and format as markdown alert
       const lines = text.split('\n').filter(line => line.trim());
-      const typeUpper = type.toUpperCase();
+      const typeUpper = extractedType.toUpperCase();
       const quotedLines = lines.map(line => `> ${line}`).join('\n');
       const markdown = `> [!${typeUpper}]\n>\n${quotedLines}\n\n`;
+      
+      console.log(`Creating alert markdown: type="${extractedType}" -> "[!${typeUpper}]"`);
       
       alerts.push({
         placeholder,
@@ -1045,7 +1091,11 @@ async function htmlToMarkdown(html: string, markdownPath: string | null): Promis
     }
     
     if (alerts.length > 0) {
-      console.log('Extracted alerts:', alerts.map(a => ({ placeholder: a.placeholder, replacement: a.replacement.substring(0, 50) })));
+      console.log('Extracted alerts:', alerts.map(a => ({ 
+        placeholder: a.placeholder, 
+        replacement: a.replacement.substring(0, 50),
+        type: a.replacement.match(/\[!(\w+)\]/)?.[1] || 'unknown'
+      })));
     }
     
     // Clean up TipTap's HTML structure
