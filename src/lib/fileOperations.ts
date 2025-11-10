@@ -71,20 +71,58 @@ turndownService.addRule('taskItem', {
   },
 });
 
-// Add custom rule for alerts
-turndownService.addRule('alert', {
+// Add custom rule for regular list items to prevent extra blank lines
+turndownService.addRule('listItem', {
   filter: (node) => {
-    return node.nodeName === 'DIV' && (node as HTMLElement).hasAttribute('data-alert-type');
+    // Only match regular list items (not task items)
+    return node.nodeName === 'LI' && 
+           !(node as HTMLElement).getAttribute('data-type') &&
+           node.parentNode &&
+           ((node.parentNode as HTMLElement).nodeName === 'UL' || (node.parentNode as HTMLElement).nodeName === 'OL') &&
+           (node.parentNode as HTMLElement).getAttribute('data-type') !== 'taskList';
   },
   replacement: (content, node) => {
-    const alertType = (node as HTMLElement).getAttribute('data-alert-type') || 'note';
-    const typeUpper = alertType.toUpperCase();
-    // Split content by newlines and add > prefix for each line
-    const lines = content.split('\n').filter(line => line.trim());
-    const quotedLines = lines.map(line => `> ${line}`).join('\n');
-    return `> [!${typeUpper}]\n>\n${quotedLines}\n\n`;
+    const text = content.trim();
+    // Determine if parent is ordered or unordered list
+    const parent = node.parentNode as HTMLElement;
+    if (parent && parent.nodeName === 'OL') {
+      // For ordered lists, Turndown will handle numbering, we just need to prevent extra blank lines
+      // Get the index of this li within its parent
+      const index = Array.from(parent.children).indexOf(node as HTMLElement);
+      return `${index + 1}. ${text}\n`;
+    } else {
+      // For unordered lists, use bullet
+      return `- ${text}\n`;
+    }
   },
 });
+
+// Add custom rule for regular bullet lists to prevent extra blank lines
+turndownService.addRule('bulletList', {
+  filter: (node) => {
+    return node.nodeName === 'UL' && (node as HTMLElement).getAttribute('data-type') !== 'taskList';
+  },
+  replacement: (content) => {
+    // Remove trailing newlines and add single newline
+    const trimmed = content.trim();
+    return trimmed ? `\n${trimmed}\n` : '';
+  },
+});
+
+// Add custom rule for ordered lists to prevent extra blank lines
+turndownService.addRule('orderedList', {
+  filter: (node) => {
+    return node.nodeName === 'OL';
+  },
+  replacement: (content) => {
+    // Remove trailing newlines and add single newline
+    const trimmed = content.trim();
+    return trimmed ? `\n${trimmed}\n` : '';
+  },
+});
+
+// Note: We handle alerts manually in htmlToMarkdown by extracting them before Turndown processes the HTML.
+// Turndown rules for alerts are disabled to avoid conflicts with our manual extraction/restoration process.
 
 // Note: We handle footnotes manually in htmlToMarkdown by extracting them before Turndown processes the HTML.
 // Turndown rules for footnotes are disabled to avoid conflicts with our manual extraction/restoration process.
@@ -122,7 +160,7 @@ async function markdownToHTML(markdown: string, markdownPath: string | null): Pr
     // Task lists (must come before regular lists)
     .replace(/^- \[([ x])\] (.+)$/gm, (_, checked, text) => {
       const isChecked = checked === 'x';
-      return `<li data-type="taskItem"><input type="checkbox" ${isChecked ? 'checked' : ''}><div>${text}</div></li>`;
+      return `<li data-type="taskItem" data-checked="${isChecked}"><label><input type="checkbox" ${isChecked ? 'checked' : ''}></label><div>${text}</div></li>`;
     })
     // Regular lists
     .replace(/^- (.+)$/gm, '<li>$1</li>')
@@ -353,6 +391,9 @@ async function htmlToMarkdown(html: string, markdownPath: string | null): Promis
       });
     }
     
+    // Preserve alerts before processing (extract and restore like footnotes)
+    const alerts: Array<{ placeholder: string; replacement: string; index: number; length: number }> = [];
+    
     // Preserve footnote references and definitions before processing
     const footnoteRefs: Array<{ placeholder: string; replacement: string; index: number; length: number }> = [];
     const footnoteDefs: Array<{ placeholder: string; replacement: string; index: number; length: number }> = [];
@@ -478,6 +519,103 @@ async function htmlToMarkdown(html: string, markdownPath: string | null): Promis
       }
     }
     
+    // Extract alerts - find all divs with data-alert-type attribute
+    // We need to properly handle nested divs by finding the matching closing tag
+    const alertMatches: Array<{ fullMatch: string; type: string; content: string; index: number }> = [];
+    
+    // Find all opening div tags with data-alert-type
+    const alertOpenRegex = /<div([^>]*data-alert-type="([^"]*)"[^>]*)>/gi;
+    let alertOpenMatch: RegExpExecArray | null;
+    const openTags: Array<{ index: number; type: string; openTag: string }> = [];
+    
+    while ((alertOpenMatch = alertOpenRegex.exec(processedHtml)) !== null) {
+      const type = alertOpenMatch[2];
+      if (type) {
+        openTags.push({
+          index: alertOpenMatch.index,
+          type: type,
+          openTag: alertOpenMatch[0],
+        });
+      }
+    }
+    
+    // For each opening tag, find the matching closing tag by counting div nesting
+    for (const openTag of openTags) {
+      let pos = openTag.index + openTag.openTag.length;
+      let depth = 1;
+      let contentStart = pos;
+      
+      while (depth > 0 && pos < processedHtml.length) {
+        const nextOpen = processedHtml.indexOf('<div', pos);
+        const nextClose = processedHtml.indexOf('</div>', pos);
+        
+        if (nextClose === -1) break; // No closing tag found
+        
+        if (nextOpen !== -1 && nextOpen < nextClose) {
+          depth++;
+          pos = nextOpen + 4;
+        } else {
+          depth--;
+          if (depth === 0) {
+            // Found matching closing tag
+            const content = processedHtml.substring(contentStart, nextClose);
+            const fullMatch = processedHtml.substring(openTag.index, nextClose + 6);
+            
+            // Check if this alert is nested inside another alert we've already found
+            const isNested = alertMatches.some(m => 
+              m.index < openTag.index && openTag.index < m.index + m.fullMatch.length
+            );
+            
+            if (!isNested) {
+              alertMatches.push({
+                fullMatch,
+                type: openTag.type,
+                content,
+                index: openTag.index,
+              });
+            }
+            break;
+          }
+          pos = nextClose + 6;
+        }
+      }
+    }
+    
+    // Sort by index descending for reverse replacement
+    alertMatches.sort((a, b) => b.index - a.index);
+    
+    // Replace alerts in reverse order using substring manipulation
+    for (const { fullMatch, type, content, index } of alertMatches) {
+      const placeholder = `__ALERT_${alerts.length}__`;
+      
+      // Extract text content from HTML, preserving line breaks
+      let text = content;
+      // Remove alert-header and alert-content wrapper divs, but keep their content
+      text = text.replace(/<div[^>]*class="alert-header"[^>]*>[\s\S]*?<\/div>/gi, '');
+      text = text.replace(/<div[^>]*class="alert-content"[^>]*>/gi, '');
+      text = text.replace(/<\/div>/g, '');
+      // Extract text from paragraphs and other elements
+      text = text.replace(/<p[^>]*>/g, '').replace(/<\/p>/g, '\n').replace(/<br\s*\/?>/gi, '\n');
+      text = text.replace(/<[^>]*>/g, ''); // Remove remaining HTML tags
+      text = text.trim().replace(/\n{3,}/g, '\n\n').replace(/^\n+|\n+$/g, '');
+      
+      // Split into lines and format as markdown alert
+      const lines = text.split('\n').filter(line => line.trim());
+      const typeUpper = type.toUpperCase();
+      const quotedLines = lines.map(line => `> ${line}`).join('\n');
+      const markdown = `> [!${typeUpper}]\n>\n${quotedLines}\n\n`;
+      
+      alerts.push({
+        placeholder,
+        replacement: markdown,
+        index,
+        length: fullMatch.length
+      });
+      
+      // Replace at specific index
+      processedHtml = processedHtml.substring(0, index) + placeholder + processedHtml.substring(index + fullMatch.length);
+    }
+    
     // Debug logging
     if (footnoteRefs.length > 0 || footnoteDefs.length > 0) {
       console.log('Extracted footnotes:', {
@@ -486,15 +624,10 @@ async function htmlToMarkdown(html: string, markdownPath: string | null): Promis
         refDetails: footnoteRefs.map(r => ({ placeholder: r.placeholder, replacement: r.replacement })),
         defDetails: footnoteDefs.map(d => ({ placeholder: d.placeholder, replacement: d.replacement })),
       });
-    } else {
-      // Log a sample of the HTML to see what we're working with
-      const sampleHtml = processedHtml.substring(0, Math.min(2000, processedHtml.length));
-      console.log('No footnotes extracted. Sample HTML:', sampleHtml);
-      // Check if there are any sup or div tags with footnote attributes
-      const hasSupWithRef = /<sup[^>]*data-footnote-ref/gi.test(processedHtml);
-      const hasDivWithId = /<div[^>]*data-footnote-id/gi.test(processedHtml);
-      console.log('Has sup with data-footnote-ref:', hasSupWithRef);
-      console.log('Has div with data-footnote-id:', hasDivWithId);
+    }
+    
+    if (alerts.length > 0) {
+      console.log('Extracted alerts:', alerts.map(a => ({ placeholder: a.placeholder, replacement: a.replacement.substring(0, 50) })));
     }
     
     // Clean up TipTap's HTML structure
@@ -544,6 +677,19 @@ async function htmlToMarkdown(html: string, markdownPath: string | null): Promis
         console.log(`Restored footnote definition: ${placeholder} -> ${replacement}`);
       } else {
         console.warn(`Failed to restore footnote definition placeholder: ${placeholder}`);
+      }
+    }
+    
+    // Restore alerts (in reverse order to avoid index conflicts)
+    for (let i = alerts.length - 1; i >= 0; i--) {
+      const { placeholder, replacement } = alerts[i];
+      const escapedPlaceholder = placeholder.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const beforeReplace = markdown;
+      markdown = markdown.replace(new RegExp(escapedPlaceholder, 'g'), replacement);
+      if (beforeReplace !== markdown) {
+        console.log(`Restored alert: ${placeholder} -> ${replacement.substring(0, 50)}...`);
+      } else {
+        console.warn(`Failed to restore alert placeholder: ${placeholder}`);
       }
     }
     

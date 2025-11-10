@@ -31,6 +31,11 @@
     margin: 0;
     min-height: var(--editor-line-height);
   }
+
+  /* Exception: paragraphs in task items should be inline */
+  .ProseMirror ul[data-type="taskList"] li[data-type="taskItem"] p {
+    min-height: 0 !important;
+  }
   
   .ProseMirror p.is-editor-empty:first-child::before {
     content: attr(data-placeholder);
@@ -93,6 +98,77 @@
   
   .ProseMirror ol {
     list-style-type: decimal;
+  }
+
+  /* Regular list items - match task item spacing and structure */
+  .ProseMirror ul > li,
+  .ProseMirror ol > li {
+    margin: 0;
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    align-items: flex-start;
+    gap: 0.5rem;
+    list-style: none !important;
+    position: relative;
+  }
+  
+  /* Add custom bullet/number before list items to match task item checkbox spacing */
+  .ProseMirror ul > li::before {
+    content: '•';
+    display: inline-block;
+    margin-top: 0.125rem;
+    color: var(--color-gray-400);
+    flex: 0 0 auto;
+    width: auto;
+    line-height: 1.5rem;
+  }
+  
+  .ProseMirror ol > li {
+    counter-increment: list-counter;
+  }
+  
+  .ProseMirror ol {
+    counter-reset: list-counter;
+  }
+  
+  .ProseMirror ol > li::before {
+    content: counter(list-counter) '.';
+    display: inline-block;
+    margin-top: 0.125rem;
+    color: var(--color-gray-400);
+    flex: 0 0 auto;
+    width: auto;
+    line-height: 1.5rem;
+  }
+  
+  /* Make content in regular list items flow properly - all content should be inline */
+  /* Exclude task list items - they have their own structure */
+  .ProseMirror ul:not([data-type="taskList"]) > li > *,
+  .ProseMirror ol > li > * {
+    flex: 1 1 auto;
+    margin: 0 !important;
+    padding: 0 !important;
+    line-height: 1.5rem;
+    min-width: 0;
+    display: inline !important;
+  }
+  
+  /* Ensure paragraphs in regular list items are inline */
+  /* Exclude task list items */
+  .ProseMirror ul:not([data-type="taskList"]) > li > p,
+  .ProseMirror ol > li > p {
+    display: inline !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    line-height: inherit !important;
+    min-height: 0 !important;
+  }
+  
+  /* Make sure all text content flows inline in regular lists */
+  .ProseMirror ul:not([data-type="taskList"]) > li > * > *,
+  .ProseMirror ol > li > * > * {
+    display: inline !important;
   }
   
   .ProseMirror blockquote {
@@ -165,37 +241,118 @@
 
   /* Task Lists */
   .ProseMirror ul[data-type="taskList"] {
-    list-style: none;
+    list-style: none !important;
     padding-left: var(--editor-list-padding);
+    margin: 0;
   }
 
-  .ProseMirror ul[data-type="taskList"] li[data-type="taskItem"] {
-    display: flex;
+  /* Remove any default list markers */
+  .ProseMirror ul[data-type="taskList"]::before,
+  .ProseMirror ul[data-type="taskList"]::after {
+    display: none !important;
+  }
+
+  /* Target task items - they might not always have data-type="taskItem" */
+  .ProseMirror ul[data-type="taskList"] > li {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
     align-items: flex-start;
     gap: 0.5rem;
-    margin: 0.25rem 0;
+    margin: 0;
+    list-style: none !important;
+    position: relative;
   }
 
+  /* Also target with data-type for compatibility */
+  .ProseMirror ul[data-type="taskList"] li[data-type="taskItem"] {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    align-items: flex-start;
+    gap: 0.5rem;
+    margin: 0;
+    list-style: none !important;
+    position: relative;
+  }
+
+  /* Remove any pseudo-elements that might show bullets */
+  .ProseMirror ul[data-type="taskList"] > li::before,
+  .ProseMirror ul[data-type="taskList"] > li::after,
+  .ProseMirror ul[data-type="taskList"] > li::marker,
+  .ProseMirror ul[data-type="taskList"] li[data-type="taskItem"]::before,
+  .ProseMirror ul[data-type="taskList"] li[data-type="taskItem"]::after,
+  .ProseMirror ul[data-type="taskList"] li[data-type="taskItem"]::marker {
+    display: none !important;
+    content: none !important;
+  }
+
+  .ProseMirror ul[data-type="taskList"] > li > label,
   .ProseMirror ul[data-type="taskList"] li[data-type="taskItem"] > label {
     flex: 0 0 auto;
-    margin-right: 0.5rem;
+    margin: 0;
+    margin-top: 0.125rem;
     user-select: none;
-    display: flex;
-    align-items: center;
+    display: inline-flex;
+    align-items: flex-start;
     cursor: pointer;
+    line-height: 1.5rem;
+    width: auto;
   }
 
+  /* Handle span inside label */
+  .ProseMirror ul[data-type="taskList"] > li > label > span,
+  .ProseMirror ul[data-type="taskList"] li[data-type="taskItem"] > label > span {
+    display: none;
+  }
+
+  /* Override user agent block display - div is a flex item */
+  .ProseMirror ul[data-type="taskList"] > li > div,
   .ProseMirror ul[data-type="taskList"] li[data-type="taskItem"] > div {
     flex: 1 1 auto;
+    margin: 0;
+    padding: 0;
+    line-height: 1.5rem;
+    min-width: 0;
+  }
+  
+  /* Override user agent block display on paragraph - make it behave like inline text, not a block */
+  /* Regular list items don't have p tags, so task list p should behave like plain text */
+  .ProseMirror ul[data-type="taskList"] > li > div > p,
+  .ProseMirror ul[data-type="taskList"] > li div > p,
+  .ProseMirror ul[data-type="taskList"] li[data-type="taskItem"] > div > p,
+  .ProseMirror ul[data-type="taskList"] li[data-type="taskItem"] div > p {
+    margin: 0 !important;
+    padding: 0 !important;
+    line-height: inherit !important;
+    display: inline !important;
+    min-height: 0 !important;
+    width: auto !important;
+    float: none !important;
+    clear: none !important;
+    /* Remove all block-level behavior - make it behave like text in regular list items */
+    vertical-align: baseline;
+  }
+
+  /* Make sure all content in the div flows inline */
+  .ProseMirror ul[data-type="taskList"] > li > div > *,
+  .ProseMirror ul[data-type="taskList"] > li div > *,
+  .ProseMirror ul[data-type="taskList"] li[data-type="taskItem"] > div > *,
+  .ProseMirror ul[data-type="taskList"] li[data-type="taskItem"] div > * {
+    display: inline !important;
+    float: none !important;
+    clear: none !important;
   }
 
   .ProseMirror ul[data-type="taskList"] input[type="checkbox"] {
     cursor: pointer;
-    width: 1.125rem;
-    height: 1.125rem;
-    margin: 0;
-    margin-top: 0.125rem;
-    flex-shrink: 0;
+    width: 1.125rem !important;
+    height: 1.125rem !important;
+    min-width: 1.125rem !important;
+    min-height: 1.125rem !important;
+    margin: 0 !important;
+    flex-shrink: 0 !important;
+    flex-grow: 0 !important;
     appearance: none;
     -webkit-appearance: none;
     border: 2px solid var(--color-gray-600);
@@ -203,6 +360,10 @@
     background-color: var(--color-gray-900);
     position: relative;
     transition: all 0.2s;
+    align-self: flex-start;
+    margin-top: 0.125rem;
+    display: inline-block;
+    box-sizing: border-box;
   }
 
   .ProseMirror ul[data-type="taskList"] input[type="checkbox"]:checked {
@@ -238,7 +399,7 @@
     margin: 1rem 0;
     border-radius: 0.375rem;
     border-left-width: 4px;
-    padding: 1rem;
+    padding: 0.75rem 1rem;
     background-color: var(--color-gray-900);
   }
 
@@ -265,7 +426,7 @@
   .ProseMirror .alert-content {
     display: flex;
     flex-direction: column;
-    gap: 0.5rem;
+    gap: 0.375rem;
   }
 
   .ProseMirror .alert-header {
@@ -273,6 +434,7 @@
     align-items: center;
     gap: 0.5rem;
     font-weight: 600;
+    margin-bottom: 0.25rem;
   }
 
   .ProseMirror .alert-icon {
@@ -320,7 +482,63 @@
   }
 
   .ProseMirror .alert-body {
-    margin-top: 0.25rem;
+    margin-top: 0;
+    padding-bottom: 0;
+    margin-bottom: 0;
+  }
+
+  /* Reduce spacing for paragraphs inside alerts */
+  .ProseMirror .alert-body p {
+    margin-top: 0;
+    margin-bottom: 0.5rem;
+  }
+
+  /* Override user agent styles for last paragraph */
+  .ProseMirror .alert-body p:last-child,
+  .ProseMirror .alert-body p:last-of-type {
+    margin-bottom: 0 !important;
+    margin-top: 0 !important;
+    padding-bottom: 0 !important;
+    padding-top: 0 !important;
+  }
+
+  /* Remove bottom spacing from any last child in alert body - override all possible user agent styles */
+  .ProseMirror .alert-body > *:last-child,
+  .ProseMirror .alert-body > *:last-of-type {
+    margin-bottom: 0 !important;
+    margin-top: 0 !important;
+    padding-bottom: 0 !important;
+    padding-top: 0 !important;
+  }
+
+  /* Remove bottom margin from alert wrapper's last child */
+  .ProseMirror .alert-content > *:last-child,
+  .ProseMirror .alert-content > *:last-of-type {
+    margin-bottom: 0 !important;
+    padding-bottom: 0 !important;
+  }
+
+  /* Override any default spacing on alert-body's direct children */
+  .ProseMirror .alert-body > * {
+    margin-bottom: 0.5rem;
+  }
+
+  .ProseMirror .alert-body > *:last-child,
+  .ProseMirror .alert-body > *:last-of-type {
+    margin-bottom: 0 !important;
+  }
+
+  /* Override Tailwind prose styles and any other global styles */
+  .ProseMirror .alert-wrapper .alert-body *:last-child,
+  .ProseMirror .alert-wrapper .alert-body *:last-of-type {
+    margin-bottom: 0 !important;
+    padding-bottom: 0 !important;
+  }
+
+  /* Ensure alert-body itself has no bottom spacing */
+  .ProseMirror .alert-wrapper .alert-content .alert-body:last-child {
+    margin-bottom: 0 !important;
+    padding-bottom: 0 !important;
   }
 
   /* Footnotes */
