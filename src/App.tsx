@@ -30,6 +30,8 @@ import { type Editor as TipTapEditor } from '@tiptap/react';
 import logo from '/logo.png';
 import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow';
 import { exit } from '@tauri-apps/plugin-process';
+import { onOpenUrl } from '@tauri-apps/plugin-deep-link';
+import { listen } from '@tauri-apps/api/event';
 
 function App() {
   const [fileState, setFileState] = useState<FileState>({
@@ -204,9 +206,16 @@ function App() {
         const currentWindow = getCurrentWebviewWindow();
         await windowManager.updateWindowTitle(label, null);
 
-        // Check if file path is passed via URL params
+        // Check if file path is passed via initialization script (from file associations)
+        // @ts-ignore - window.openedFile is set by initialization script
+        const openedFile = (window as any).openedFile;
+        
+        // Also check URL params (for backward compatibility)
         const params = new URLSearchParams(window.location.search);
-        const filePath = params.get('file');
+        const filePathFromUrl = params.get('file');
+        
+        // Prefer initialization script file path, fallback to URL param
+        const filePath = openedFile || filePathFromUrl;
         const isRestore = params.get('restore') === 'true';
 
         if (filePath) {
@@ -242,8 +251,18 @@ function App() {
             setPendingAction('close');
             setShowUnsavedDialog(true);
           } else {
-            await windowManager.closeWindow(label);
-            await windowManager.saveWindowSession();
+            // Check if this is the last window - if so, hide it instead of closing
+            // to keep the app running (macOS behavior)
+            const allWindows = windowManager.getAllWindows();
+            if (allWindows.length <= 1) {
+              // Hide the window instead of closing to keep app running
+              event.preventDefault();
+              await currentWindow.hide();
+              await windowManager.saveWindowSession();
+            } else {
+              await windowManager.closeWindow(label);
+              await windowManager.saveWindowSession();
+            }
           }
         });
 
@@ -265,6 +284,70 @@ function App() {
     initWindow();
      
   }, []);
+
+  // Listen for open-file event (when file is opened in main window)
+  useEffect(() => {
+    const unlistenPromise = listen<string>('open-file', async (event) => {
+      const filePath = event.payload;
+      if (filePath) {
+        const result = await loadFileFromPath(filePath);
+        if (result) {
+          setFileState({
+            path: result.path,
+            content: result.content,
+            hasUnsavedChanges: false,
+          });
+          if (windowLabel) {
+            windowManager.updateWindowTitle(windowLabel, result.path);
+          }
+        }
+      }
+    });
+
+    return () => {
+      unlistenPromise.then((unlisten) => unlisten());
+    };
+  }, [windowLabel]);
+
+  // Listen for deep link URLs (e.g., marky://open?file=/path/to/file.md)
+  useEffect(() => {
+    const unlisten = onOpenUrl((urls) => {
+      for (const url of urls) {
+        try {
+          const urlObj = new URL(url);
+          // Handle marky://open?file=/path/to/file.md
+          if (urlObj.protocol === 'marky:') {
+            const filePath = urlObj.searchParams.get('file');
+            if (filePath) {
+              // Decode the file path
+              const decodedPath = decodeURIComponent(filePath);
+              // Load and open the file
+              loadFileFromPath(decodedPath).then((result) => {
+                if (result) {
+                  setFileState({
+                    path: result.path,
+                    content: result.content,
+                    hasUnsavedChanges: false,
+                  });
+                  if (windowLabel) {
+                    windowManager.updateWindowTitle(windowLabel, result.path);
+                  }
+                }
+              }).catch((error) => {
+                console.error('Failed to open file from deep link:', error);
+              });
+            }
+          }
+        } catch (error) {
+          console.error('Failed to parse deep link URL:', error);
+        }
+      }
+    });
+
+    return () => {
+      unlisten.then((fn) => fn());
+    };
+  }, [windowLabel]);
 
   const updateWindowsMenu = async () => {
     const windows = windowManager.getAllWindows();
