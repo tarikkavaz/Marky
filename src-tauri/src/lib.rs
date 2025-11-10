@@ -9,6 +9,7 @@ use std::time::Duration;
 use tauri::{Emitter, Manager, RunEvent, State, WebviewUrl, WebviewWindowBuilder};
 #[cfg(not(any(target_os = "macos", target_os = "ios")))]
 use tauri::{Emitter, Manager, State, WebviewUrl, WebviewWindowBuilder};
+use tauri::menu::{Menu, MenuItem, PredefinedMenuItem, Submenu};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct WindowInfo {
@@ -288,6 +289,61 @@ async fn unwatch_file(
     Ok(())
 }
 
+// Helper function to create a new window (used by both command and menu handler)
+async fn create_new_window_internal(app: &tauri::AppHandle) -> Result<String, String> {
+    let label = format!("window-{}", std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_millis());
+    let title = "Untitled".to_string();
+    
+    let url = WebviewUrl::App("/".into());
+    
+    let builder = WebviewWindowBuilder::new(app, &label, url)
+        .title(&title)
+        .inner_size(800.0, 1000.0)
+        .decorations(true)
+        .transparent(true)
+        .center()
+        .resizable(true);
+    
+    #[cfg(target_os = "macos")]
+    let builder = builder
+        .title_bar_style(tauri::TitleBarStyle::Visible)
+        .hidden_title(false);
+    
+    let window_result = builder.build();
+    
+    match window_result {
+        Ok(_window) => {
+            // Register the window in the registry
+            if let Some(window_registry) = app.try_state::<WindowRegistry>() {
+                if let Ok(mut windows) = window_registry.windows.lock() {
+                    windows.insert(
+                        label.clone(),
+                        WindowInfo {
+                            label: label.clone(),
+                            file_path: None,
+                            title: title.clone(),
+                        },
+                    );
+                }
+            }
+            Ok(label)
+        }
+        Err(e) => Err(format!("Failed to create window: {}", e))
+    }
+}
+
+#[tauri::command]
+async fn create_new_window(
+    app: tauri::AppHandle,
+    _state: State<'_, WindowRegistry>,
+) -> Result<String, String> {
+    // Use the internal function
+    create_new_window_internal(&app).await
+}
+
 // Helper function to create or use a window with a file path
 fn create_window_with_file(
     app_handle: &tauri::AppHandle,
@@ -401,6 +457,7 @@ pub fn run() {
             show_close_confirmation,
             watch_file,
             unwatch_file,
+            create_new_window,
         ])
         .setup(|app| {
             // Prevent app from quitting when all windows are closed (macOS behavior)
@@ -422,6 +479,272 @@ pub fn run() {
             app.manage(FileWatcherRegistry {
                 stop_channels: Mutex::new(HashMap::new()),
                 app_handle: app.handle().clone(),
+            });
+
+            // Build native menu with OS-appropriate structure
+            let app_handle = app.handle().clone();
+            let new_window_id = tauri::menu::MenuId::new("new-window");
+            let open_file_id = tauri::menu::MenuId::new("open-file");
+            let save_file_id = tauri::menu::MenuId::new("save-file");
+            let save_file_as_id = tauri::menu::MenuId::new("save-file-as");
+            let about_id = tauri::menu::MenuId::new("about");
+            let help_id = tauri::menu::MenuId::new("help");
+            let quit_id = tauri::menu::MenuId::new("quit");
+            
+            #[cfg(target_os = "macos")]
+            {
+                // macOS: Add items to File menu
+                let new_window_item = MenuItem::with_id(
+                    &app_handle,
+                    new_window_id.clone(),
+                    "New Window",
+                    true,
+                    Some("cmd+n"),
+                ).map_err(|e| format!("Failed to create menu item: {}", e))?;
+                
+                let open_file_item = MenuItem::with_id(
+                    &app_handle,
+                    open_file_id.clone(),
+                    "Open File",
+                    true,
+                    Some("cmd+o"),
+                ).map_err(|e| format!("Failed to create menu item: {}", e))?;
+                
+                let save_file_item = MenuItem::with_id(
+                    &app_handle,
+                    save_file_id.clone(),
+                    "Save",
+                    true,
+                    Some("cmd+s"),
+                ).map_err(|e| format!("Failed to create menu item: {}", e))?;
+                
+                let save_file_as_item = MenuItem::with_id(
+                    &app_handle,
+                    save_file_as_id.clone(),
+                    "Save As...",
+                    true,
+                    Some("cmd+shift+s"),
+                ).map_err(|e| format!("Failed to create menu item: {}", e))?;
+                
+                let about_item = MenuItem::with_id(
+                    &app_handle,
+                    about_id.clone(),
+                    "About Marky",
+                    true,
+                    None::<&str>,
+                ).map_err(|e| format!("Failed to create menu item: {}", e))?;
+                
+                let help_item = MenuItem::with_id(
+                    &app_handle,
+                    help_id.clone(),
+                    "Help",
+                    true,
+                    None::<&str>,
+                ).map_err(|e| format!("Failed to create menu item: {}", e))?;
+                
+                let quit_item = MenuItem::with_id(
+                    &app_handle,
+                    quit_id.clone(),
+                    "Quit Marky",
+                    true,
+                    Some("cmd+q"),
+                ).map_err(|e| format!("Failed to create menu item: {}", e))?;
+                
+                // Edit menu items using PredefinedMenuItem for OS defaults
+                let undo_item = PredefinedMenuItem::undo(&app_handle, None)
+                    .map_err(|e| format!("Failed to create undo item: {}", e))?;
+                let redo_item = PredefinedMenuItem::redo(&app_handle, None)
+                    .map_err(|e| format!("Failed to create redo item: {}", e))?;
+                let cut_item = PredefinedMenuItem::cut(&app_handle, None)
+                    .map_err(|e| format!("Failed to create cut item: {}", e))?;
+                let copy_item = PredefinedMenuItem::copy(&app_handle, None)
+                    .map_err(|e| format!("Failed to create copy item: {}", e))?;
+                let paste_item = PredefinedMenuItem::paste(&app_handle, None)
+                    .map_err(|e| format!("Failed to create paste item: {}", e))?;
+                let select_all_item = PredefinedMenuItem::select_all(&app_handle, None)
+                    .map_err(|e| format!("Failed to create select all item: {}", e))?;
+                
+                let separator1 = PredefinedMenuItem::separator(&app_handle)
+                    .map_err(|e| format!("Failed to create separator: {}", e))?;
+                let separator2 = PredefinedMenuItem::separator(&app_handle)
+                    .map_err(|e| format!("Failed to create separator: {}", e))?;
+                
+                let file_menu = Submenu::with_items(
+                    &app_handle,
+                    "File",
+                    true,
+                    &[&new_window_item, &open_file_item, &save_file_item, &save_file_as_item, &separator1, &quit_item],
+                ).map_err(|e| format!("Failed to create file menu: {}", e))?;
+                
+                let edit_menu = Submenu::with_items(
+                    &app_handle,
+                    "Edit",
+                    true,
+                    &[&undo_item, &redo_item, &separator2, &cut_item, &copy_item, &paste_item, &separator2, &select_all_item],
+                ).map_err(|e| format!("Failed to create edit menu: {}", e))?;
+                
+                let help_menu = Submenu::with_items(
+                    &app_handle,
+                    "Help",
+                    true,
+                    &[&help_item, &about_item],
+                ).map_err(|e| format!("Failed to create help menu: {}", e))?;
+                
+                let menu = Menu::with_items(
+                    &app_handle,
+                    &[&file_menu, &edit_menu, &help_menu],
+                ).map_err(|e| format!("Failed to create menu: {}", e))?;
+                
+                app.handle().set_menu(menu)?;
+            }
+            
+            #[cfg(not(target_os = "macos"))]
+            {
+                // Windows/Linux: Add "New Window" to Window menu, others to File menu
+                let new_window_item = MenuItem::with_id(
+                    &app_handle,
+                    new_window_id.clone(),
+                    "New Window",
+                    true,
+                    Some("ctrl+n"),
+                ).map_err(|e| format!("Failed to create menu item: {}", e))?;
+                
+                let open_file_item = MenuItem::with_id(
+                    &app_handle,
+                    open_file_id.clone(),
+                    "Open File",
+                    true,
+                    Some("ctrl+o"),
+                ).map_err(|e| format!("Failed to create menu item: {}", e))?;
+                
+                let save_file_item = MenuItem::with_id(
+                    &app_handle,
+                    save_file_id.clone(),
+                    "Save",
+                    true,
+                    Some("ctrl+s"),
+                ).map_err(|e| format!("Failed to create menu item: {}", e))?;
+                
+                let save_file_as_item = MenuItem::with_id(
+                    &app_handle,
+                    save_file_as_id.clone(),
+                    "Save As...",
+                    true,
+                    Some("ctrl+shift+s"),
+                ).map_err(|e| format!("Failed to create menu item: {}", e))?;
+                
+                let about_item = MenuItem::with_id(
+                    &app_handle,
+                    about_id.clone(),
+                    "About Marky",
+                    true,
+                    None::<&str>,
+                ).map_err(|e| format!("Failed to create menu item: {}", e))?;
+                
+                let help_item = MenuItem::with_id(
+                    &app_handle,
+                    help_id.clone(),
+                    "Help",
+                    true,
+                    None::<&str>,
+                ).map_err(|e| format!("Failed to create menu item: {}", e))?;
+                
+                let quit_item = MenuItem::with_id(
+                    &app_handle,
+                    quit_id.clone(),
+                    "Quit Marky",
+                    true,
+                    Some("ctrl+q"),
+                ).map_err(|e| format!("Failed to create menu item: {}", e))?;
+                
+                // Edit menu items using PredefinedMenuItem for OS defaults
+                let undo_item = PredefinedMenuItem::undo(&app_handle, None)
+                    .map_err(|e| format!("Failed to create undo item: {}", e))?;
+                let redo_item = PredefinedMenuItem::redo(&app_handle, None)
+                    .map_err(|e| format!("Failed to create redo item: {}", e))?;
+                let cut_item = PredefinedMenuItem::cut(&app_handle, None)
+                    .map_err(|e| format!("Failed to create cut item: {}", e))?;
+                let copy_item = PredefinedMenuItem::copy(&app_handle, None)
+                    .map_err(|e| format!("Failed to create copy item: {}", e))?;
+                let paste_item = PredefinedMenuItem::paste(&app_handle, None)
+                    .map_err(|e| format!("Failed to create paste item: {}", e))?;
+                let select_all_item = PredefinedMenuItem::select_all(&app_handle, None)
+                    .map_err(|e| format!("Failed to create select all item: {}", e))?;
+                
+                let separator1 = PredefinedMenuItem::separator(&app_handle)
+                    .map_err(|e| format!("Failed to create separator: {}", e))?;
+                let separator2 = PredefinedMenuItem::separator(&app_handle)
+                    .map_err(|e| format!("Failed to create separator: {}", e))?;
+                
+                let file_menu = Submenu::with_items(
+                    &app_handle,
+                    "File",
+                    true,
+                    &[&open_file_item, &save_file_item, &save_file_as_item, &separator1, &quit_item],
+                ).map_err(|e| format!("Failed to create file menu: {}", e))?;
+                
+                let edit_menu = Submenu::with_items(
+                    &app_handle,
+                    "Edit",
+                    true,
+                    &[&undo_item, &redo_item, &separator2, &cut_item, &copy_item, &paste_item, &separator2, &select_all_item],
+                ).map_err(|e| format!("Failed to create edit menu: {}", e))?;
+                
+                let window_menu = Submenu::with_items(
+                    &app_handle,
+                    "Window",
+                    true,
+                    &[&new_window_item],
+                ).map_err(|e| format!("Failed to create window menu: {}", e))?;
+                
+                let help_menu = Submenu::with_items(
+                    &app_handle,
+                    "Help",
+                    true,
+                    &[&help_item, &about_item],
+                ).map_err(|e| format!("Failed to create help menu: {}", e))?;
+                
+                let menu = Menu::with_items(
+                    &app_handle,
+                    &[&file_menu, &edit_menu, &window_menu, &help_menu],
+                ).map_err(|e| format!("Failed to create menu: {}", e))?;
+                
+                app.handle().set_menu(menu)?;
+            }
+            
+            // Handle menu events
+            let app_handle_clone = app.handle().clone();
+            app.handle().on_menu_event(move |_app, event| {
+                let app_handle = app_handle_clone.clone();
+                
+                if event.id() == &new_window_id {
+                    tauri::async_runtime::spawn(async move {
+                        match create_new_window_internal(&app_handle).await {
+                            Ok(_) => {}
+                            Err(e) => {
+                                eprintln!("Failed to create new window: {}", e);
+                            }
+                        }
+                    });
+                } else if event.id() == &open_file_id {
+                    // Emit event to all windows
+                    let _ = app_handle.emit("menu-open-file", ());
+                } else if event.id() == &save_file_id {
+                    // Emit event to all windows
+                    let _ = app_handle.emit("menu-save-file", ());
+                } else if event.id() == &save_file_as_id {
+                    // Emit event to all windows
+                    let _ = app_handle.emit("menu-save-file-as", ());
+                } else if event.id() == &about_id {
+                    // Emit event to all windows to show about dialog
+                    let _ = app_handle.emit("menu-show-about", ());
+                } else if event.id() == &help_id {
+                    // Emit event to all windows to show help modal
+                    let _ = app_handle.emit("menu-show-help", ());
+                } else if event.id() == &quit_id {
+                    // Emit event to all windows to quit app
+                    let _ = app_handle.emit("menu-quit", ());
+                }
             });
 
             if cfg!(debug_assertions) {

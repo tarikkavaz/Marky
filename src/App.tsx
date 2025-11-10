@@ -17,6 +17,8 @@ import { startWatching, stopWatching, onFileChanged, onFileDeleted } from './lib
 import { Button } from './components/ui/button';
 import { UnsavedChangesDialog } from './components/dialogs/UnsavedChangesDialog';
 import { ExternalFileChangeDialog } from './components/dialogs/ExternalFileChangeDialog';
+import { HelpDialog } from './components/dialogs/HelpDialog';
+import { AboutDialog } from './components/dialogs/AboutDialog';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -51,6 +53,8 @@ function App() {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [showExternalChangeDialog, setShowExternalChangeDialog] = useState(false);
   const [externalChangeFilePath, setExternalChangeFilePath] = useState<string | null>(null);
+  const [showHelpDialog, setShowHelpDialog] = useState(false);
+  const [showAboutDialog, setShowAboutDialog] = useState(false);
   
   // Refs for file watcher cleanup
   const fileChangeUnlistenRef = useRef<(() => void) | null>(null);
@@ -308,6 +312,43 @@ function App() {
       unlistenPromise.then((unlisten) => unlisten());
     };
   }, [windowLabel]);
+
+  // Listen for menu events from native menu
+  useEffect(() => {
+    const unlistenOpenPromise = listen('menu-open-file', async () => {
+      await handleOpen();
+    });
+
+    const unlistenSavePromise = listen('menu-save-file', async () => {
+      await handleSave();
+    });
+
+    const unlistenSaveAsPromise = listen('menu-save-file-as', async () => {
+      await handleSaveAs();
+    });
+
+    const unlistenHelpPromise = listen('menu-show-help', () => {
+      setShowHelpDialog(true);
+    });
+
+    const unlistenAboutPromise = listen('menu-show-about', () => {
+      setShowAboutDialog(true);
+    });
+
+    const unlistenQuitPromise = listen('menu-quit', async () => {
+      await handleQuitApp();
+    });
+
+    return () => {
+      unlistenOpenPromise.then((unlisten) => unlisten());
+      unlistenSavePromise.then((unlisten) => unlisten());
+      unlistenSaveAsPromise.then((unlisten) => unlisten());
+      unlistenHelpPromise.then((unlisten) => unlisten());
+      unlistenAboutPromise.then((unlisten) => unlisten());
+      unlistenQuitPromise.then((unlisten) => unlisten());
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fileState.hasUnsavedChanges, fileState.path, showSource, markdownContent, editor, windowLabel]);
 
   // Listen for deep link URLs (e.g., marky://open?file=/path/to/file.md)
   useEffect(() => {
@@ -937,6 +978,14 @@ function App() {
         }}
         filePath={externalChangeFilePath || ''}
         hasUnsavedChanges={fileState.hasUnsavedChanges}
+      />
+      <HelpDialog
+        open={showHelpDialog}
+        onOpenChange={setShowHelpDialog}
+      />
+      <AboutDialog
+        open={showAboutDialog}
+        onOpenChange={setShowAboutDialog}
       />
     </div>
   );
