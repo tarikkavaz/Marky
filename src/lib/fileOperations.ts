@@ -67,11 +67,142 @@ turndownService.addRule('taskItem', {
     const checkbox = (node as HTMLElement).querySelector('input[type="checkbox"]') as HTMLInputElement;
     const isChecked = checkbox?.checked || false;
     const text = content.trim();
-    return `- [${isChecked ? 'x' : ' '}] ${text}\n`;
+    
+    // Calculate nesting level and add appropriate indentation (2 spaces per level)
+    const level = getNestingLevel(node);
+    const indent = '  '.repeat(level);
+    
+    return `${indent}- [${isChecked ? 'x' : ' '}] ${text}\n`;
   },
 });
 
-// Add custom rule for regular list items to prevent extra blank lines
+// Helper function to calculate nesting level by counting LI ancestors
+function getNestingLevel(node: Node): number {
+  let level = 0;
+  let current: Node | null = node.parentNode; // Start from parent since node is the LI itself
+  
+  // Walk up the DOM tree and count LI ancestors
+  while (current) {
+    if ((current as HTMLElement).nodeName === 'LI') {
+      level++;
+    }
+    current = current.parentNode;
+  }
+  
+  return level;
+}
+
+// Post-process markdown to fix nested list indentation
+function fixNestedListIndentation(markdown: string): string {
+  const lines = markdown.split('\n');
+  const result: string[] = [];
+  let i = 0;
+  
+  while (i < lines.length) {
+    const line = lines[i];
+    
+    // Check if this is a list item (including task lists)
+    const listItemMatch = line.match(/^(\s*)([-*]|\d+\.)\s+(.+)$/);
+    const taskItemMatch = line.match(/^(\s*)- \[([ x])\]\s+(.+)$/);
+    
+    if (listItemMatch || taskItemMatch) {
+      const match = listItemMatch || taskItemMatch!;
+      const indent = match[1];
+      const indentLevel = indent.length;
+      
+      // Look ahead to find nested items (skip empty lines)
+      let j = i + 1;
+      let emptyLinesCount = 0;
+      
+      // Skip initial empty lines
+      while (j < lines.length && lines[j].trim() === '') {
+        emptyLinesCount++;
+        j++;
+      }
+      
+      // Check if the next non-empty line is a nested list item
+      if (j < lines.length) {
+        const nextLine = lines[j];
+        const nextListItemMatch = nextLine.match(/^(\s*)([-*]|\d+\.)\s+(.+)$/);
+        const nextTaskItemMatch = nextLine.match(/^(\s*)- \[([ x])\]\s+(.+)$/);
+        const nextMatch = nextListItemMatch || nextTaskItemMatch;
+        
+        if (nextMatch) {
+          const nextIndentLevel = nextMatch[1].length;
+          
+          // If next item has more indentation OR same indentation but we skipped empty lines, it might be nested
+          // Actually, if we skipped empty lines and next item has same/less indent, it's probably a sibling
+          // Only treat as nested if it has more indent
+          if (nextIndentLevel > indentLevel) {
+            // This is a nested item - remove empty lines and fix indentation
+            const expectedNestedIndent = indentLevel + 2;
+            const fixedNextLine = nextLine.replace(/^(\s*)/, ' '.repeat(expectedNestedIndent));
+            
+            result.push(line);
+            result.push(fixedNextLine);
+            i = j + 1;
+            
+            // Continue processing nested items
+            let k = j + 1;
+            while (k < lines.length) {
+              const nestedLine = lines[k];
+              const nestedMatch = nestedLine.match(/^(\s*)([-*]|\d+\.)\s+(.+)$/) || 
+                                  nestedLine.match(/^(\s*)- \[([ x])\]\s+(.+)$/);
+              
+              if (nestedMatch) {
+                const nestedIndentLevel = nestedMatch[1].length;
+                if (nestedIndentLevel > indentLevel) {
+                  // Still nested - fix indentation
+                  const fixedNestedLine = nestedLine.replace(/^(\s*)/, ' '.repeat(expectedNestedIndent));
+                  result.push(fixedNestedLine);
+                  k++;
+                } else {
+                  // Back to same level or higher - stop
+                  break;
+                }
+              } else if (nestedLine.trim() === '') {
+                // Empty line - check if next item is still nested
+                let m = k + 1;
+                while (m < lines.length && lines[m].trim() === '') {
+                  m++;
+                }
+                if (m < lines.length) {
+                  const afterEmptyMatch = lines[m].match(/^(\s*)([-*]|\d+\.)\s+(.+)$/) ||
+                                         lines[m].match(/^(\s*)- \[([ x])\]\s+(.+)$/);
+                  if (afterEmptyMatch && afterEmptyMatch[1].length > indentLevel) {
+                    // Still nested, skip empty line
+                    k = m;
+                  } else {
+                    break;
+                  }
+                } else {
+                  break;
+                }
+              } else {
+                // Not a list item - stop
+                break;
+              }
+            }
+            i = k;
+            continue;
+          }
+        }
+      }
+      
+      // No nested items found (or they're at same level), just add the line
+      result.push(line);
+      i++;
+    } else {
+      // Not a list item, just add it
+      result.push(line);
+      i++;
+    }
+  }
+  
+  return result.join('\n');
+}
+
+// Add custom rule for regular list items to prevent extra blank lines and preserve indentation
 turndownService.addRule('listItem', {
   filter: (node) => {
     // Only match regular list items (not task items)
@@ -82,17 +213,75 @@ turndownService.addRule('listItem', {
            (node.parentNode as HTMLElement).getAttribute('data-type') !== 'taskList';
   },
   replacement: (content, node) => {
-    const text = content.trim();
+    // Calculate nesting level and add appropriate indentation (2 spaces per level)
+    const level = getNestingLevel(node);
+    const indent = '  '.repeat(level);
+    
+    // Check if this list item contains a nested list
+    const hasNestedList = (node as HTMLElement).querySelector('ul, ol');
+    
     // Determine if parent is ordered or unordered list
     const parent = node.parentNode as HTMLElement;
-    if (parent && parent.nodeName === 'OL') {
-      // For ordered lists, Turndown will handle numbering, we just need to prevent extra blank lines
-      // Get the index of this li within its parent
-      const index = Array.from(parent.children).indexOf(node as HTMLElement);
-      return `${index + 1}. ${text}\n`;
+    const isOrdered = parent && parent.nodeName === 'OL';
+    
+    if (hasNestedList) {
+      // If there's a nested list, process the content carefully
+      // Split by newlines and indent nested list items
+      const lines = content.split('\n');
+      const processedLines: string[] = [];
+      let inNestedList = false;
+      
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        const trimmed = line.trim();
+        
+        // Check if this line is a list item (nested)
+        const isListItem = /^\s*([-*]|\d+\.)\s+/.test(trimmed);
+        
+        if (isListItem && !inNestedList) {
+          // Start of nested list - add proper indentation
+          inNestedList = true;
+          const nestedIndent = indent + '  ';
+          processedLines.push(nestedIndent + trimmed);
+        } else if (isListItem && inNestedList) {
+          // Continue nested list - add proper indentation
+          const nestedIndent = indent + '  ';
+          processedLines.push(nestedIndent + trimmed);
+        } else if (trimmed === '' && inNestedList) {
+          // Empty line in nested list - skip it to avoid extra spacing
+          continue;
+        } else {
+          // Not a list item - this is the main content
+          if (inNestedList) {
+            inNestedList = false;
+          }
+          if (i === 0) {
+            // First line is the main content
+            processedLines.push(trimmed);
+          } else if (trimmed) {
+            // Additional content lines
+            processedLines.push(trimmed);
+          }
+        }
+      }
+      
+      const processedContent = processedLines.filter(l => l.trim() || l === '').join('\n').trim();
+      
+      if (isOrdered) {
+        const index = Array.from(parent.children).indexOf(node as HTMLElement);
+        return `${indent}${index + 1}. ${processedContent}\n`;
+      } else {
+        return `${indent}- ${processedContent}\n`;
+      }
     } else {
-      // For unordered lists, use bullet
-      return `- ${text}\n`;
+      // No nested list, just process normally
+      const text = content.trim();
+      if (isOrdered) {
+        const index = Array.from(parent.children).indexOf(node as HTMLElement);
+        return `${indent}${index + 1}. ${text}\n`;
+      } else {
+        return `${indent}- ${text}\n`;
+      }
     }
   },
 });
@@ -102,10 +291,18 @@ turndownService.addRule('bulletList', {
   filter: (node) => {
     return node.nodeName === 'UL' && (node as HTMLElement).getAttribute('data-type') !== 'taskList';
   },
-  replacement: (content) => {
-    // Remove trailing newlines and add single newline
+  replacement: (content, node) => {
+    // Check if this is a nested list (inside an LI)
+    const isNested = (node as HTMLElement).parentNode?.nodeName === 'LI';
     const trimmed = content.trim();
-    return trimmed ? `\n${trimmed}\n` : '';
+    if (!trimmed) return '';
+    
+    // For nested lists, don't add extra newlines - they're already part of the parent list item
+    if (isNested) {
+      return trimmed;
+    }
+    // For top-level lists, add newlines
+    return `\n${trimmed}\n`;
   },
 });
 
@@ -114,10 +311,18 @@ turndownService.addRule('orderedList', {
   filter: (node) => {
     return node.nodeName === 'OL';
   },
-  replacement: (content) => {
-    // Remove trailing newlines and add single newline
+  replacement: (content, node) => {
+    // Check if this is a nested list (inside an LI)
+    const isNested = (node as HTMLElement).parentNode?.nodeName === 'LI';
     const trimmed = content.trim();
-    return trimmed ? `\n${trimmed}\n` : '';
+    if (!trimmed) return '';
+    
+    // For nested lists, don't add extra newlines - they're already part of the parent list item
+    if (isNested) {
+      return trimmed;
+    }
+    // For top-level lists, add newlines
+    return `\n${trimmed}\n`;
   },
 });
 
@@ -136,6 +341,213 @@ turndownService.addRule('horizontalRule', {
     return '\n\n---\n\n';
   },
 });
+
+// Parse nested lists from markdown
+function parseNestedLists(markdown: string): string {
+  const lines = markdown.split('\n');
+  const result: string[] = [];
+  let i = 0;
+
+  while (i < lines.length) {
+    const line = lines[i];
+    
+    // Check if this line is a list item
+    const taskMatch = line.match(/^(\s*)- \[([ x])\] (.+)$/);
+    const orderedMatch = line.match(/^(\s*)(\d+)\. (.+)$/);
+    const unorderedMatch = line.match(/^(\s*)- (.+)$/);
+    
+    if (taskMatch || orderedMatch || unorderedMatch) {
+      // Found a list - parse the entire list block
+      const listHtml = parseListBlock(lines, i);
+      result.push(listHtml.html);
+      i = listHtml.nextIndex;
+    } else {
+      // Not a list item, keep as is
+      result.push(line);
+      i++;
+    }
+  }
+
+  return result.join('\n');
+}
+
+// Parse a list block starting at the given line index
+function parseListBlock(lines: string[], startIndex: number): { html: string; nextIndex: number } {
+  interface ListItem {
+    type: 'task' | 'ordered' | 'unordered';
+    indent: number;
+    content: string;
+    checked?: boolean;
+    children: ListItem[];
+  }
+
+  const items: ListItem[] = [];
+  let i = startIndex;
+
+  while (i < lines.length) {
+    const line = lines[i];
+    const indent = line.match(/^(\s*)/)?.[1].length || 0;
+    
+    // Check if this line is a list item
+    const taskMatch = line.match(/^(\s*)- \[([ x])\] (.+)$/);
+    const orderedMatch = line.match(/^(\s*)(\d+)\. (.+)$/);
+    const unorderedMatch = line.match(/^(\s*)- (.+)$/);
+    
+    if (taskMatch) {
+      items.push({
+        type: 'task',
+        indent,
+        content: taskMatch[3],
+        checked: taskMatch[2] === 'x',
+        children: [],
+      });
+      i++;
+    } else if (orderedMatch) {
+      items.push({
+        type: 'ordered',
+        indent,
+        content: orderedMatch[3],
+        children: [],
+      });
+      i++;
+    } else if (unorderedMatch) {
+      items.push({
+        type: 'unordered',
+        indent,
+        content: unorderedMatch[2],
+        children: [],
+      });
+      i++;
+    } else if (line.trim() === '') {
+      // Empty line - might be end of list or just spacing
+      i++;
+      // If next line is not indented more than current items, end the list
+      if (i < lines.length) {
+        const nextLine = lines[i];
+        const nextIndent = nextLine.match(/^(\s*)/)?.[1].length || 0;
+        const minIndent = Math.min(...items.map(item => item.indent));
+        if (nextIndent <= minIndent && !nextLine.match(/^(\s*)(-|(\d+)\.)/)) {
+          break;
+        }
+      }
+    } else {
+      // Not a list item and not empty - end of list
+      break;
+    }
+  }
+
+  // Build nested structure
+  function buildNested(items: ListItem[], baseIndent: number = -1): ListItem[] {
+    if (items.length === 0) return [];
+    
+    const result: ListItem[] = [];
+    let j = 0;
+    
+    while (j < items.length) {
+      const item = items[j];
+      
+      // Skip items that are at or below base indent (they belong to a parent level)
+      if (baseIndent >= 0 && item.indent <= baseIndent) {
+        break;
+      }
+      
+      // This item is at the current level (indent > baseIndent)
+      result.push(item);
+      j++;
+      
+      // Collect children (items with greater indent than this item)
+      const children: ListItem[] = [];
+      while (j < items.length && items[j].indent > item.indent) {
+        children.push(items[j]);
+        j++;
+      }
+      
+      // Recursively process children
+      if (children.length > 0) {
+        item.children = buildNested(children, item.indent);
+      }
+    }
+    
+    return result;
+  }
+
+  const nestedItems = buildNested(items);
+
+  // Convert to HTML
+  function itemsToHtml(items: ListItem[]): string {
+    if (items.length === 0) return '';
+    
+    // Determine list type from first item
+    const firstType = items[0].type;
+    const isTaskList = firstType === 'task';
+    const isOrdered = firstType === 'ordered';
+    
+    let html = '';
+    let currentListType: 'task' | 'ordered' | 'unordered' | null = null;
+    let listHtml = '';
+    
+    for (const item of items) {
+      // Start new list if type changed
+      if (currentListType !== item.type) {
+        if (currentListType !== null) {
+          // Close previous list
+          if (currentListType === 'task') {
+            listHtml += '</ul>';
+          } else if (currentListType === 'ordered') {
+            listHtml += '</ol>';
+          } else {
+            listHtml += '</ul>';
+          }
+          html += listHtml;
+          listHtml = '';
+        }
+        
+        // Start new list
+        if (item.type === 'task') {
+          listHtml = '<ul data-type="taskList">';
+        } else if (item.type === 'ordered') {
+          listHtml = '<ol>';
+        } else {
+          listHtml = '<ul>';
+        }
+        currentListType = item.type;
+      }
+      
+      // Add list item
+      if (item.type === 'task') {
+        const checkedAttr = item.checked ? 'checked' : '';
+        const checkedData = item.checked ? 'true' : 'false';
+        listHtml += `<li data-type="taskItem" data-checked="${checkedData}"><label><input type="checkbox" ${checkedAttr}></label><div>${item.content}</div>`;
+      } else {
+        listHtml += `<li>${item.content}`;
+      }
+      
+      // Add children if any
+      if (item.children.length > 0) {
+        listHtml += itemsToHtml(item.children);
+      }
+      
+      listHtml += '</li>';
+    }
+    
+    // Close last list
+    if (currentListType === 'task') {
+      listHtml += '</ul>';
+    } else if (currentListType === 'ordered') {
+      listHtml += '</ol>';
+    } else {
+      listHtml += '</ul>';
+    }
+    html += listHtml;
+    
+    return html;
+  }
+
+  return {
+    html: itemsToHtml(nestedItems),
+    nextIndex: i,
+  };
+}
 
 // Convert Markdown to HTML for editor
 async function markdownToHTML(markdown: string, markdownPath: string | null): Promise<string> {
@@ -156,37 +568,12 @@ async function markdownToHTML(markdown: string, markdownPath: string | null): Pr
     .replace(/```(\w+)?\n?([\s\S]+?)```/g, (_, lang, code) => 
       `<pre><code class="language-${lang || 'plaintext'}">${code.trim()}</code></pre>`)
     // Inline code
-    .replace(/`([^`]+)`/g, '<code>$1</code>')
-    // Task lists (must come before regular lists)
-    .replace(/^- \[([ x])\] (.+)$/gm, (_, checked, text) => {
-      const isChecked = checked === 'x';
-      return `<li data-type="taskItem" data-checked="${isChecked}"><label><input type="checkbox" ${isChecked ? 'checked' : ''}></label><div>${text}</div></li>`;
-    })
-    // Ordered lists - mark them with a data attribute so we can identify them later
-    // Only match non-empty lines (skip empty lines)
-    .replace(/^(\d+)\. (.+)$/gm, '<li data-ordered="true">$2</li>')
-    // Regular unordered lists - only match non-empty lines
-    .replace(/^- (.+)$/gm, '<li>$1</li>')
-    // Group consecutive list items into lists
-    .replace(/(<li[^>]*>.*<\/li>\n?)+/g, (match) => {
-      // Check if this is a task list
-      if (match.includes('data-type="taskItem"')) {
-        return `<ul data-type="taskList">${match}</ul>`;
-      }
-      // Check if this should be an ordered list (has data-ordered attribute)
-      if (match.includes('data-ordered="true"')) {
-        // Remove the data-ordered attribute and wrap in <ol>
-        const cleanedMatch = match.replace(/ data-ordered="true"/g, '');
-        return `<ol>${cleanedMatch}</ol>`;
-      }
-      // Regular unordered list
-      return `<ul>${match}</ul>`;
-    })
-    // Clean up empty list items and trailing breaks
-    .replace(/<li[^>]*>\s*<\/li>/g, '')
-    .replace(/<li[^>]*><p>\s*<\/p><\/li>/g, '')
-    .replace(/<li[^>]*><p><br[^>]*><\/p><\/li>/g, '')
-    .replace(/<li[^>]*><p><br[^>]*class="ProseMirror-trailingBreak"[^>]*><\/p><\/li>/g, '')
+    .replace(/`([^`]+)`/g, '<code>$1</code>');
+
+  // Parse nested lists (must be done before paragraph processing)
+  html = parseNestedLists(html);
+
+  html = html
     // Footnote definitions MUST come before footnote references
     // Otherwise [^1]: content will be matched by the reference regex first
     .replace(/\[\^(\d+)\]: (.+)$/gm, (match, id, content) => {
@@ -679,6 +1066,9 @@ async function htmlToMarkdown(html: string, markdownPath: string | null): Promis
     }
     
     let markdown = turndownService.turndown(cleanedHtml);
+    
+    // Post-process to fix nested list indentation
+    markdown = fixNestedListIndentation(markdown);
     
     // Restore footnote references (in reverse order to avoid index conflicts)
     for (let i = footnoteRefs.length - 1; i >= 0; i--) {

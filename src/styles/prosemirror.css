@@ -107,13 +107,13 @@
     margin: 0;
     display: flex !important;
     flex-direction: row !important;
-    flex-wrap: nowrap !important;
+    flex-wrap: wrap !important;
     align-items: flex-start;
     gap: 0.5rem;
     list-style: none !important;
     position: relative;
   }
-  
+
   /* Add custom bullet/number before list items to match task item checkbox spacing */
   .ProseMirror ul > li::before {
     content: '•';
@@ -132,6 +132,11 @@
   .ProseMirror ol {
     counter-reset: list-counter;
   }
+
+  /* Reset counter for nested ordered lists */
+  .ProseMirror ol ol {
+    counter-reset: list-counter;
+  }
   
   .ProseMirror ol > li::before {
     content: counter(list-counter) '.';
@@ -143,32 +148,57 @@
     line-height: 1.5rem;
   }
   
-  /* Make content in regular list items flow properly - all content should be inline */
+  /* Make content in regular list items flow properly - paragraphs should be inline with bullet/number */
   /* Exclude task list items - they have their own structure */
-  .ProseMirror ul:not([data-type="taskList"]) > li > *,
-  .ProseMirror ol > li > * {
+  .ProseMirror ul:not([data-type="taskList"]) > li > p,
+  .ProseMirror ol > li > p {
     flex: 1 1 auto;
     margin: 0 !important;
     padding: 0 !important;
     line-height: 1.5rem;
     min-width: 0;
     display: inline !important;
+    order: 1;
   }
   
-  /* Ensure paragraphs in regular list items are inline */
-  /* Exclude task list items */
-  .ProseMirror ul:not([data-type="taskList"]) > li > p,
-  .ProseMirror ol > li > p {
-    display: inline !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    line-height: inherit !important;
-    min-height: 0 !important;
+  /* Nested lists in regular list items should be block-level and full width, wrapping to new line */
+  .ProseMirror ul:not([data-type="taskList"]) > li > ul,
+  .ProseMirror ul:not([data-type="taskList"]) > li > ol,
+  .ProseMirror ol > li > ul,
+  .ProseMirror ol > li > ol {
+    display: block !important;
+    margin-top: -0.25rem !important;
+    margin-bottom: 0 !important;
+    padding-top: 0 !important;
+    flex-basis: 100% !important;
+    width: 100% !important;
+    order: 2 !important;
+    margin-left: calc(var(--editor-list-padding) * -1) !important;
+    padding-left: calc(var(--editor-list-padding) * 2) !important;
+  }
+
+  /* Remove extra vertical spacing from list items inside nested lists */
+  .ProseMirror ul:not([data-type="taskList"]) > li > ul > li,
+  .ProseMirror ul:not([data-type="taskList"]) > li > ol > li,
+  .ProseMirror ol > li > ul > li,
+  .ProseMirror ol > li > ol > li {
+    margin-top: -0.25rem !important;
+    margin-bottom: 0 !important;
+    padding-top: 0 !important;
+  }
+
+  /* Remove spacing from first nested list item */
+  .ProseMirror ul:not([data-type="taskList"]) > li > ul > li:first-child,
+  .ProseMirror ul:not([data-type="taskList"]) > li > ol > li:first-child,
+  .ProseMirror ol > li > ul > li:first-child,
+  .ProseMirror ol > li > ol > li:first-child {
+    margin-top: -0.25rem !important;
+    padding-top: 0 !important;
   }
   
   /* Make sure all text content flows inline in regular lists */
-  .ProseMirror ul:not([data-type="taskList"]) > li > * > *,
-  .ProseMirror ol > li > * > * {
+  .ProseMirror ul:not([data-type="taskList"]) > li > p > *,
+  .ProseMirror ol > li > p > * {
     display: inline !important;
   }
 
@@ -330,6 +360,16 @@
     line-height: 1.5rem;
     min-width: 0;
   }
+
+  /* Task items with nested lists need column layout for the div */
+  .ProseMirror ul[data-type="taskList"] > li:has(> div > ul) > div,
+  .ProseMirror ul[data-type="taskList"] > li:has(> div > ol) > div,
+  .ProseMirror ul[data-type="taskList"] li[data-type="taskItem"]:has(> div > ul) > div,
+  .ProseMirror ul[data-type="taskList"] li[data-type="taskItem"]:has(> div > ol) > div {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch;
+  }
   
   /* Override user agent block display on paragraph - make it behave like inline text, not a block */
   /* Regular list items don't have p tags, so task list p should behave like plain text */
@@ -349,14 +389,61 @@
     vertical-align: baseline;
   }
 
-  /* Make sure all content in the div flows inline */
-  .ProseMirror ul[data-type="taskList"] > li > div > *,
-  .ProseMirror ul[data-type="taskList"] > li div > *,
-  .ProseMirror ul[data-type="taskList"] li[data-type="taskItem"] > div > *,
-  .ProseMirror ul[data-type="taskList"] li[data-type="taskItem"] div > * {
+  /* Make sure content in the div flows inline, but allow block elements like nested lists */
+  .ProseMirror ul[data-type="taskList"] > li > div > p,
+  .ProseMirror ul[data-type="taskList"] > li div > p,
+  .ProseMirror ul[data-type="taskList"] li[data-type="taskItem"] > div > p,
+  .ProseMirror ul[data-type="taskList"] li[data-type="taskItem"] div > p {
     display: inline !important;
     float: none !important;
     clear: none !important;
+  }
+
+  /* Nested lists inside task items should be block-level and appear on new line */
+  .ProseMirror ul[data-type="taskList"] > li > div > ul,
+  .ProseMirror ul[data-type="taskList"] > li > div > ol,
+  .ProseMirror ul[data-type="taskList"] li[data-type="taskItem"] > div > ul,
+  .ProseMirror ul[data-type="taskList"] li[data-type="taskItem"] > div > ol,
+  .ProseMirror ul[data-type="taskList"] > li > div > ul[data-type="taskList"],
+  .ProseMirror ul[data-type="taskList"] li[data-type="taskItem"] > div > ul[data-type="taskList"] {
+    display: block !important;
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
+    padding-bottom: 0 !important;
+    width: 100% !important;
+    padding-left: calc(var(--editor-list-padding) * 0.25) !important;
+  }
+
+  /* Reduce bottom spacing for nested task items */
+  .ProseMirror ul[data-type="taskList"] > li > div > ul[data-type="taskList"] > li,
+  .ProseMirror ul[data-type="taskList"] li[data-type="taskItem"] > div > ul[data-type="taskList"] > li {
+    margin-bottom: 0 !important;
+    padding-bottom: 0 !important;
+  }
+
+  /* Reduce bottom spacing for last nested task item */
+  .ProseMirror ul[data-type="taskList"] > li > div > ul[data-type="taskList"] > li:last-child,
+  .ProseMirror ul[data-type="taskList"] li[data-type="taskItem"] > div > ul[data-type="taskList"] > li:last-child {
+    margin-bottom: 0 !important;
+    padding-bottom: 0 !important;
+  }
+
+  /* Make the div in task items able to contain both inline and block children */
+  .ProseMirror ul[data-type="taskList"] > li > div:has(> ul),
+  .ProseMirror ul[data-type="taskList"] > li > div:has(> ol),
+  .ProseMirror ul[data-type="taskList"] li[data-type="taskItem"] > div:has(> ul),
+  .ProseMirror ul[data-type="taskList"] li[data-type="taskItem"] > div:has(> ol) {
+    display: block !important;
+  }
+
+  /* Nested lists inside regular list items should also be block-level */
+  .ProseMirror ul:not([data-type="taskList"]) > li > ul,
+  .ProseMirror ul:not([data-type="taskList"]) > li > ol,
+  .ProseMirror ol > li > ul,
+  .ProseMirror ol > li > ol {
+    display: block !important;
+    margin-top: 0.5rem !important;
+    margin-bottom: 0 !important;
   }
 
   .ProseMirror ul[data-type="taskList"] input[type="checkbox"] {
