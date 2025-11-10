@@ -173,8 +173,8 @@
     flex-basis: 100% !important;
     width: 100% !important;
     order: 2 !important;
-    margin-left: calc(var(--editor-list-padding) * -1) !important;
-    padding-left: calc(var(--editor-list-padding) * 2) !important;
+    margin-left: 0 !important;
+    padding-left: calc(0.5rem + var(--editor-list-padding)) !important;
   }
 
   /* Remove extra vertical spacing from list items inside nested lists */
