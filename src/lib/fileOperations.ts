@@ -347,6 +347,19 @@ turndownService.addRule('horizontalRule', {
   },
 });
 
+// Add custom rule for images to ensure they're always on separate lines
+turndownService.addRule('image', {
+  filter: 'img',
+  replacement: (content, node) => {
+    const img = node as HTMLImageElement;
+    const alt = img.getAttribute('alt') || '';
+    // Prefer data-original-src (relative path) over src (base64 data URL)
+    const src = img.getAttribute('data-original-src') || img.getAttribute('src') || '';
+    // Ensure images are on separate lines with blank lines around them
+    return `\n\n![${alt}](${src})\n\n`;
+  },
+});
+
 // Parse nested lists from markdown
 function parseNestedLists(markdown: string): string {
   const lines = markdown.split('\n');
@@ -804,16 +817,35 @@ export async function htmlToMarkdown(html: string, markdownPath: string | null):
       }
     }
     
+    // Extract images before processing (similar to footnotes and alerts)
+    // This ensures images are always on separate lines in markdown
+    const images: Array<{ placeholder: string; replacement: string; index: number; length: number }> = [];
+    
     // Restore original file paths from data-original-src attribute and convert to relative paths
     let processedHtml = html;
     if (markdownPath) {
       const markdownDir = await dirname(markdownPath);
-      // Find all img tags with src
+      // Find all img tags with src - collect matches first
       const imgRegex = /<img([^>]*?)src="([^"]+)"([^>]*?)>/g;
-      const matches = [...html.matchAll(imgRegex)];
+      const matches: Array<{ fullMatch: string; index: number; before: string; src: string; after: string }> = [];
       
-      for (const match of matches) {
-        const [fullMatch, before, src, after] = match;
+      // Collect all matches first
+      let match;
+      while ((match = imgRegex.exec(html)) !== null) {
+        matches.push({
+          fullMatch: match[0],
+          index: match.index,
+          before: match[1],
+          src: match[2],
+          after: match[3],
+        });
+      }
+      
+      // Sort by index descending for reverse replacement
+      matches.sort((a, b) => b.index - a.index);
+      
+      // Replace images with placeholders
+      for (const { fullMatch, index, before, src, after } of matches) {
         // Check if data-original-src attribute exists
         const dataOriginalMatch = fullMatch.match(/data-original-src="([^"]+)"/);
         let imagePath = dataOriginalMatch ? dataOriginalMatch[1] : imageUrlToMarkdownPath(src, markdownDir);
@@ -827,17 +859,19 @@ export async function htmlToMarkdown(html: string, markdownPath: string | null):
         const altMatch = fullMatch.match(/alt="([^"]*)"/);
         const alt = altMatch ? altMatch[1] : '';
         
-        // If it's already a relative path, keep it
-        // Remove data-original-src from the output, but preserve alt
-        const cleanedBefore = before.replace(/\s*data-original-src="[^"]*"/, '');
-        const cleanedAfter = after.replace(/\s*data-original-src="[^"]*"/, '');
+        // Create markdown image syntax with blank lines around it to ensure separate lines
+        const placeholder = `__IMAGE_${images.length}__`;
+        const replacement = `\n\n![${alt}](${imagePath})\n\n`;
         
-        // Reconstruct img tag with updated src and preserved alt
-        const altAttr = alt ? ` alt="${alt}"` : '';
-        processedHtml = processedHtml.replace(
-          fullMatch,
-          `<img${cleanedBefore}src="${imagePath}"${altAttr}${cleanedAfter}>`
-        );
+        images.push({
+          placeholder,
+          replacement,
+          index,
+          length: fullMatch.length,
+        });
+        
+        // Replace with placeholder
+        processedHtml = processedHtml.substring(0, index) + placeholder + processedHtml.substring(index + fullMatch.length);
       }
     } else {
       // No markdown path - keep absolute paths or temp paths as-is for now
@@ -1138,24 +1172,46 @@ export async function htmlToMarkdown(html: string, markdownPath: string | null):
       .replace(/<p><\/p>/g, '\n\n') // Empty paragraphs to double newlines
       .replace(/<br\s*\/?>/g, '  \n'); // BR tags to markdown line breaks (two spaces + newline)
     
-    // Remove <p> tags inside table cells for better GFM conversion
-    cleanedHtml = cleanedHtml.replace(/<(th|td)([^>]*)><p>([\s\S]*?)<\/p><\/(th|td)>/g, '<$1$2>$3</$4>');
-    
     // Clean up TipTap's table HTML for GFM plugin compatibility
+    // This must be done before removing <p> tags inside cells
     if (cleanedHtml.includes('<table')) {
-      cleanedHtml = cleanedHtml
-        // Remove style attributes from table elements
-        .replace(/<table[^>]*>/g, '<table>')
-        .replace(/<(th|td|tr)[^>]*>/g, '<$1>')
+      // Process tables more comprehensively
+      // First, extract all tables and clean them individually
+      const tableRegex = /<table[^>]*>[\s\S]*?<\/table>/gi;
+      cleanedHtml = cleanedHtml.replace(tableRegex, (tableHtml) => {
         // Remove colgroup elements
-        .replace(/<colgroup>[\s\S]*?<\/colgroup>/g, '')
-        // Remove tbody/thead/tfoot wrappers (keep content)
-        .replace(/<\/?tbody>/g, '')
-        .replace(/<\/?thead>/g, '')
-        .replace(/<\/?tfoot>/g, '');
+        let cleanTable = tableHtml.replace(/<colgroup[^>]*>[\s\S]*?<\/colgroup>/gi, '');
+        
+        // Remove <p> tags inside table cells
+        cleanTable = cleanTable.replace(/<(th|td)([^>]*)><p[^>]*>([\s\S]*?)<\/p><\/(th|td)>/gi, '<$1$2>$3</$4>');
+        
+        // Remove tbody/thead/tfoot wrappers completely
+        cleanTable = cleanTable.replace(/<\/?tbody[^>]*>/gi, '');
+        cleanTable = cleanTable.replace(/<\/?thead[^>]*>/gi, '');
+        cleanTable = cleanTable.replace(/<\/?tfoot[^>]*>/gi, '');
+        
+        // Remove all attributes from table elements
+        cleanTable = cleanTable.replace(/<table[^>]*>/gi, '<table>');
+        cleanTable = cleanTable.replace(/<(th|td|tr)[^>]*>/gi, '<$1>');
+        
+        return cleanTable;
+      });
+    }
+    
+    // Debug: log table HTML before conversion
+    if (cleanedHtml.includes('<table')) {
+      const tableMatch = cleanedHtml.match(/<table>[\s\S]*?<\/table>/i);
+      if (tableMatch) {
+        console.log('Table HTML before Turndown:', tableMatch[0].substring(0, 500));
+      }
     }
     
     let markdown = turndownService.turndown(cleanedHtml);
+    
+    // Debug: log markdown after conversion
+    if (markdown.includes('<table') || markdown.includes('|')) {
+      console.log('Markdown after Turndown (first 500 chars):', markdown.substring(0, 500));
+    }
     
     // Post-process to fix nested list indentation
     markdown = fixNestedListIndentation(markdown);
@@ -1186,6 +1242,19 @@ export async function htmlToMarkdown(html: string, markdownPath: string | null):
       }
     }
     
+    // Restore images (in reverse order to avoid index conflicts)
+    for (let i = images.length - 1; i >= 0; i--) {
+      const { placeholder, replacement } = images[i];
+      const escapedPlaceholder = placeholder.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const beforeReplace = markdown;
+      markdown = markdown.replace(new RegExp(escapedPlaceholder, 'g'), replacement);
+      if (beforeReplace !== markdown) {
+        console.log(`Restored image: ${placeholder} -> ${replacement.substring(0, 50)}...`);
+      } else {
+        console.warn(`Failed to restore image placeholder: ${placeholder}`);
+      }
+    }
+    
     // Restore alerts (in reverse order to avoid index conflicts)
     for (let i = alerts.length - 1; i >= 0; i--) {
       const { placeholder, replacement } = alerts[i];
@@ -1199,11 +1268,18 @@ export async function htmlToMarkdown(html: string, markdownPath: string | null):
       }
     }
     
-    // Clean up excessive whitespace while preserving paragraph breaks
-    const finalMarkdown = markdown
+    // Clean up excessive whitespace while preserving paragraph breaks and image spacing
+    // First, protect image spacing by temporarily marking images
+    let finalMarkdown = markdown.replace(/(\n\n!\[[^\]]*\]\([^)]+\)\n\n)/g, '___IMAGE_MARKER___$1___IMAGE_MARKER___');
+    
+    // Clean up excessive whitespace (but preserve image spacing)
+    finalMarkdown = finalMarkdown
       .replace(/\n{4,}/g, '\n\n') // More than 3 newlines to double newlines
       .replace(/[ \t]+$/gm, '') // Remove trailing spaces from lines
       .trim();
+    
+    // Restore image markers (they already have proper spacing)
+    finalMarkdown = finalMarkdown.replace(/___IMAGE_MARKER___/g, '');
     
     console.log('Conversion complete. Output length:', finalMarkdown.length);
     console.log('First 500 chars of markdown:', finalMarkdown.substring(0, 500));
