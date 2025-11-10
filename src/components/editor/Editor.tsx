@@ -23,6 +23,64 @@ export function Editor({ content, onChange, onEditorReady, currentFilePath }: Ed
       attributes: {
         class: 'prose prose-invert max-w-none focus:outline-none min-h-full p-8',
       },
+      handleClick: (view, pos, event) => {
+        const target = event.target as HTMLElement;
+        
+        // Check if clicking on a footnote reference
+        const footnoteRef = target.closest('.footnote-reference');
+        if (footnoteRef) {
+          const footnoteId = footnoteRef.getAttribute('data-footnote-ref');
+          if (footnoteId) {
+            // Find the corresponding footnote definition
+            const editorElement = view.dom;
+            const footnoteDef = editorElement.querySelector(
+              `.footnote-definition[data-footnote-id="${footnoteId}"]`
+            ) as HTMLElement;
+            
+            if (footnoteDef) {
+              event.preventDefault();
+              footnoteDef.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              // Highlight briefly
+              footnoteDef.style.transition = 'background-color 0.3s';
+              const originalBg = footnoteDef.style.backgroundColor;
+              footnoteDef.style.backgroundColor = 'rgba(59, 130, 246, 0.2)';
+              setTimeout(() => {
+                footnoteDef.style.backgroundColor = originalBg;
+              }, 1000);
+              return true;
+            }
+          }
+        }
+        
+        // Check if clicking on a footnote definition (scroll back to reference)
+        const footnoteDef = target.closest('.footnote-definition');
+        if (footnoteDef) {
+          const footnoteId = footnoteDef.getAttribute('data-footnote-id');
+          if (footnoteId) {
+            // Find the first footnote reference with this ID
+            const editorElement = view.dom;
+            const footnoteRefs = editorElement.querySelectorAll(
+              `.footnote-reference[data-footnote-ref="${footnoteId}"]`
+            );
+            
+            if (footnoteRefs.length > 0) {
+              event.preventDefault();
+              const firstRef = footnoteRefs[0] as HTMLElement;
+              firstRef.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              // Highlight briefly
+              firstRef.style.transition = 'background-color 0.3s';
+              const originalBg = firstRef.style.backgroundColor;
+              firstRef.style.backgroundColor = 'rgba(59, 130, 246, 0.4)';
+              setTimeout(() => {
+                firstRef.style.backgroundColor = originalBg;
+              }, 1000);
+              return true;
+            }
+          }
+        }
+        
+        return false;
+      },
       handlePaste: (view, event) => {
         // Check if HTML is available - if so, let TipTap handle it (for tables, code blocks, etc.)
         const html = event.clipboardData?.getData('text/html');
