@@ -48,6 +48,57 @@ turndownService.addRule('codeBlock', {
   },
 });
 
+// Add custom rule for task lists
+turndownService.addRule('taskList', {
+  filter: (node) => {
+    return node.nodeName === 'UL' && (node as HTMLElement).getAttribute('data-type') === 'taskList';
+  },
+  replacement: (content) => {
+    return '\n' + content + '\n';
+  },
+});
+
+// Add custom rule for task items
+turndownService.addRule('taskItem', {
+  filter: (node) => {
+    return node.nodeName === 'LI' && (node as HTMLElement).getAttribute('data-type') === 'taskItem';
+  },
+  replacement: (content, node) => {
+    const checkbox = (node as HTMLElement).querySelector('input[type="checkbox"]') as HTMLInputElement;
+    const isChecked = checkbox?.checked || false;
+    const text = content.trim();
+    return `- [${isChecked ? 'x' : ' '}] ${text}\n`;
+  },
+});
+
+// Add custom rule for alerts
+turndownService.addRule('alert', {
+  filter: (node) => {
+    return node.nodeName === 'DIV' && (node as HTMLElement).hasAttribute('data-alert-type');
+  },
+  replacement: (content, node) => {
+    const alertType = (node as HTMLElement).getAttribute('data-alert-type') || 'note';
+    const typeUpper = alertType.toUpperCase();
+    // Split content by newlines and add > prefix for each line
+    const lines = content.split('\n').filter(line => line.trim());
+    const quotedLines = lines.map(line => `> ${line}`).join('\n');
+    return `> [!${typeUpper}]\n>\n${quotedLines}\n\n`;
+  },
+});
+
+// Note: We handle footnotes manually in htmlToMarkdown by extracting them before Turndown processes the HTML.
+// Turndown rules for footnotes are disabled to avoid conflicts with our manual extraction/restoration process.
+
+// Add custom rule for horizontal rule
+turndownService.addRule('horizontalRule', {
+  filter: (node) => {
+    return node.nodeName === 'HR';
+  },
+  replacement: () => {
+    return '\n\n---\n\n';
+  },
+});
+
 // Convert Markdown to HTML for editor
 async function markdownToHTML(markdown: string, markdownPath: string | null): Promise<string> {
   let html = markdown
@@ -68,9 +119,40 @@ async function markdownToHTML(markdown: string, markdownPath: string | null): Pr
       `<pre><code class="language-${lang || 'plaintext'}">${code.trim()}</code></pre>`)
     // Inline code
     .replace(/`([^`]+)`/g, '<code>$1</code>')
-    // Lists
+    // Task lists (must come before regular lists)
+    .replace(/^- \[([ x])\] (.+)$/gm, (_, checked, text) => {
+      const isChecked = checked === 'x';
+      return `<li data-type="taskItem"><input type="checkbox" ${isChecked ? 'checked' : ''}><div>${text}</div></li>`;
+    })
+    // Regular lists
     .replace(/^- (.+)$/gm, '<li>$1</li>')
-    .replace(/(<li>.*<\/li>\n?)+/g, '<ul>$&</ul>');
+    .replace(/(<li[^>]*>.*<\/li>\n?)+/g, (match) => {
+      // Check if this is a task list
+      if (match.includes('data-type="taskItem"')) {
+        return `<ul data-type="taskList">${match}</ul>`;
+      }
+      return `<ul>${match}</ul>`;
+    })
+    // Footnote definitions MUST come before footnote references
+    // Otherwise [^1]: content will be matched by the reference regex first
+    .replace(/\[\^(\d+)\]: (.+)$/gm, (match, id, content) => {
+      const html = `<div data-footnote-id="${id}" class="footnote-definition"><p>${content}</p></div>`;
+      console.log('Converting footnote definition:', match, 'to HTML:', html);
+      return html;
+    })
+    // Footnotes references (after definitions to avoid conflicts)
+    .replace(/\[\^(\d+)\]/g, (match, id) => {
+      const html = `<sup data-footnote-ref="${id}" class="footnote-reference">${id}</sup>`;
+      console.log('Converting footnote reference:', match, 'to HTML:', html);
+      return html;
+    })
+    // Horizontal rule
+    .replace(/^---$/gm, '<hr>')
+    // Alerts (blockquotes with [!TYPE])
+    .replace(/^> \[!(\w+)\]\s*$/gm, (_, type) => {
+      // This will be handled in the blockquote processing
+      return `> [!${type}]`;
+    });
   
   // Convert markdown tables to HTML (must be done before paragraph splitting)
   html = html.replace(/(\|.+\|[\r\n]+)+/g, (match) => {
@@ -110,12 +192,59 @@ async function markdownToHTML(markdown: string, markdownPath: string | null): Pr
     return tableHtml;
   });
   
+  // Process alerts (blockquotes with [!TYPE])
+  // This needs to be done line by line to properly handle multi-line alerts
+  const lines = html.split('\n');
+  const processedLines: string[] = [];
+  let i = 0;
+  while (i < lines.length) {
+    const line = lines[i];
+    // Check if this line starts an alert blockquote
+    const alertMatch = line.match(/^> \[!(\w+)\]\s*$/);
+    if (alertMatch) {
+      const type = alertMatch[1].toLowerCase();
+      const alertContent: string[] = [];
+      i++; // Skip the alert type line
+      // Skip empty line after alert type
+      if (i < lines.length && lines[i].trim().match(/^>\s*$/)) {
+        i++;
+      }
+      // Collect all following lines that start with >
+      while (i < lines.length && lines[i].trim().startsWith('>')) {
+        const content = lines[i].replace(/^>\s?/, '');
+        if (content.trim() !== '') {
+          alertContent.push(content);
+        }
+        i++;
+        // Stop if we hit a blank line (end of alert block)
+        if (i < lines.length && lines[i].trim() === '') {
+          break;
+        }
+      }
+      if (alertContent.length > 0) {
+        processedLines.push(`<div data-alert-type="${type}"><p>${alertContent.join('</p><p>')}</p></div>`);
+      }
+      continue;
+    }
+    processedLines.push(line);
+    i++;
+  }
+  html = processedLines.join('\n');
+
   html = html
+    // Blockquotes (regular, not alerts - alerts are already processed above)
+    .replace(/^> (.+)$/gm, (match, content) => {
+      // Skip if this is part of an alert (already processed)
+      if (match.includes('[!')) {
+        return match;
+      }
+      return `<blockquote>${content}</blockquote>`;
+    })
     // Paragraphs - split by double newlines
     .split('\n\n')
     .map(para => {
       // Skip already processed block elements and images
-      if (para.match(/^<(h\d|ul|pre|table|img)/)) {
+      if (para.match(/^<(h\d|ul|pre|table|img|div|blockquote|hr)/)) {
         return para;
       }
       // Skip empty paragraphs
@@ -188,6 +317,21 @@ async function convertImagePathsToUrls(html: string, _markdownPath: string): Pro
 // Convert HTML to Markdown for saving
 async function htmlToMarkdown(html: string, markdownPath: string | null): Promise<string> {
   try {
+    console.log('Starting HTML to Markdown conversion...');
+    console.log('Input HTML length:', html.length);
+    console.log('Input HTML (first 2000 chars):', html.substring(0, 2000));
+    
+    // Check if footnote definitions are present
+    const hasFootnoteDefs = /<div[^>]*data-footnote-id/gi.test(html);
+    console.log('Has footnote definitions in HTML:', hasFootnoteDefs);
+    if (hasFootnoteDefs) {
+      const defMatches = html.match(/<div[^>]*data-footnote-id[^>]*>[\s\S]*?<\/div>/gi);
+      console.log('Found footnote definition matches:', defMatches?.length || 0);
+      if (defMatches) {
+        console.log('Sample footnote definitions:', defMatches.slice(0, 3));
+      }
+    }
+    
     // Restore original file paths from data-original-src attribute
     let processedHtml = html;
     if (markdownPath) {
@@ -207,6 +351,150 @@ async function htmlToMarkdown(html: string, markdownPath: string | null): Promis
         
         return `<img${cleanedBefore}src="${absolutePath}"${cleanedAfter}>`;
       });
+    }
+    
+    // Preserve footnote references and definitions before processing
+    const footnoteRefs: Array<{ placeholder: string; replacement: string; index: number; length: number }> = [];
+    const footnoteDefs: Array<{ placeholder: string; replacement: string; index: number; length: number }> = [];
+    
+    // Extract footnote references - find all matches first, then replace in reverse order
+    // Use a more flexible approach that doesn't depend on attribute order
+    const refMatches: Array<{ fullMatch: string; id: string; index: number }> = [];
+    
+    // Match any sup tag that has data-footnote-ref attribute (regardless of attribute order)
+    const refRegex = /<sup([^>]*)>([^<]*)<\/sup>/gi;
+    let refMatch;
+    while ((refMatch = refRegex.exec(processedHtml)) !== null) {
+      const attrs = refMatch[1];
+      const content = refMatch[2];
+      
+      // Check if this sup tag has the data-footnote-ref attribute (handle both single and double quotes)
+      let idMatch = attrs.match(/data-footnote-ref="([^"]*)"/);
+      if (!idMatch) {
+        idMatch = attrs.match(/data-footnote-ref='([^']*)'/);
+      }
+      if (idMatch) {
+        let id = idMatch[1];
+        // If ID is empty but content exists, use content as ID (fallback)
+        if (!id && content) {
+          id = content.trim();
+        }
+        // Only process if we have a valid ID (not empty)
+        if (id) {
+          refMatches.push({
+            fullMatch: refMatch[0],
+            id: id,
+            index: refMatch.index,
+          });
+        } else {
+          // Log warning if we found a footnote reference with empty ID
+          console.warn('Found footnote reference with empty ID:', refMatch[0]);
+        }
+      }
+    }
+    
+    // Debug: log what we found
+    if (refMatches.length > 0) {
+      console.log('Found footnote references:', refMatches.map(m => ({ id: m.id, html: m.fullMatch.substring(0, 100) })));
+    } else {
+      // Try to find any sup tags to debug
+      const allSupTags = processedHtml.match(/<sup[^>]*>.*?<\/sup>/gi);
+      if (allSupTags && allSupTags.length > 0) {
+        console.log('Found sup tags but no footnote refs:', allSupTags.slice(0, 5));
+      }
+    }
+    
+    // Sort by index descending for reverse replacement
+    refMatches.sort((a, b) => b.index - a.index);
+    
+    // Replace references in reverse order using substring manipulation
+    for (const { fullMatch, id, index } of refMatches) {
+      const placeholder = `__FOOTNOTE_REF_${footnoteRefs.length}__`;
+      footnoteRefs.push({ 
+        placeholder, 
+        replacement: `[^${id}]`,
+        index,
+        length: fullMatch.length
+      });
+      // Replace at specific index
+      processedHtml = processedHtml.substring(0, index) + placeholder + processedHtml.substring(index + fullMatch.length);
+    }
+    
+    // Extract footnote definitions - find all matches first, then replace in reverse order
+    // Use a more flexible approach that doesn't depend on attribute order
+    const defMatches: Array<{ fullMatch: string; id: string; content: string; index: number }> = [];
+    
+    // Match any div tag that has data-footnote-id attribute (regardless of attribute order)
+    const defRegex = /<div([^>]*)>([\s\S]*?)<\/div>/gi;
+    let defMatch: RegExpExecArray | null;
+    while ((defMatch = defRegex.exec(processedHtml)) !== null) {
+      const attrs = defMatch[1];
+      const content = defMatch[2];
+      
+      // Check if this div tag has the data-footnote-id attribute (handle both single and double quotes)
+      let idMatch = attrs.match(/data-footnote-id="([^"]*)"/);
+      if (!idMatch) {
+        idMatch = attrs.match(/data-footnote-id='([^']*)'/);
+      }
+      if (idMatch) {
+        const id = idMatch[1];
+        // Only process if we have a valid ID (not empty)
+        if (id) {
+          // Check if this is already matched (avoid duplicates)
+          const alreadyMatched = defMatches.some(m => m.index === defMatch.index);
+          if (!alreadyMatched) {
+            defMatches.push({
+              fullMatch: defMatch[0],
+              id: id,
+              content: content,
+              index: defMatch.index,
+            });
+          }
+        }
+      }
+    }
+    
+    // Sort by index descending for reverse replacement
+    defMatches.sort((a, b) => b.index - a.index);
+    
+    // Replace definitions in reverse order using substring manipulation
+    for (const { fullMatch, id, content, index } of defMatches) {
+      const placeholder = `__FOOTNOTE_DEF_${footnoteDefs.length}__`;
+      // Extract text content from HTML, preserving structure
+      let text = content;
+      // Remove HTML tags but preserve text
+      text = text.replace(/<p[^>]*>/g, '').replace(/<\/p>/g, ' ').replace(/<br\s*\/?>/gi, ' ').replace(/<[^>]*>/g, '');
+      text = text.trim().replace(/\n+/g, ' ').replace(/\s+/g, ' ');
+      if (text || id) {
+        // Include even if text is empty, as long as we have an ID
+        footnoteDefs.push({ 
+          placeholder, 
+          replacement: `\n[^${id}]: ${text || ''}\n`,
+          index,
+          length: fullMatch.length
+        });
+        // Replace at specific index
+        processedHtml = processedHtml.substring(0, index) + placeholder + processedHtml.substring(index + fullMatch.length);
+      }
+    }
+    
+    // Debug logging
+    if (footnoteRefs.length > 0 || footnoteDefs.length > 0) {
+      console.log('Extracted footnotes:', {
+        refs: footnoteRefs.length,
+        defs: footnoteDefs.length,
+        refDetails: footnoteRefs.map(r => ({ placeholder: r.placeholder, replacement: r.replacement })),
+        defDetails: footnoteDefs.map(d => ({ placeholder: d.placeholder, replacement: d.replacement })),
+      });
+    } else {
+      // Log a sample of the HTML to see what we're working with
+      const sampleHtml = processedHtml.substring(0, Math.min(2000, processedHtml.length));
+      console.log('No footnotes extracted. Sample HTML:', sampleHtml);
+      // Check if there are any sup or div tags with footnote attributes
+      const hasSupWithRef = /<sup[^>]*data-footnote-ref/gi.test(processedHtml);
+      const hasDivWithId = /<div[^>]*data-footnote-id/gi.test(processedHtml);
+      console.log('Has sup with data-footnote-ref:', hasSupWithRef);
+      console.log('Has div with data-footnote-id:', hasDivWithId);
     }
     
     // Clean up TipTap's HTML structure
@@ -231,7 +519,33 @@ async function htmlToMarkdown(html: string, markdownPath: string | null): Promis
         .replace(/<\/?tfoot>/g, '');
     }
     
-    const markdown = turndownService.turndown(cleanedHtml);
+    let markdown = turndownService.turndown(cleanedHtml);
+    
+    // Restore footnote references (in reverse order to avoid index conflicts)
+    for (let i = footnoteRefs.length - 1; i >= 0; i--) {
+      const { placeholder, replacement } = footnoteRefs[i];
+      const escapedPlaceholder = placeholder.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const beforeReplace = markdown;
+      markdown = markdown.replace(new RegExp(escapedPlaceholder, 'g'), replacement);
+      if (beforeReplace !== markdown) {
+        console.log(`Restored footnote reference: ${placeholder} -> ${replacement}`);
+      } else {
+        console.warn(`Failed to restore footnote reference placeholder: ${placeholder}`);
+      }
+    }
+    
+    // Restore footnote definitions (in reverse order to avoid index conflicts)
+    for (let i = footnoteDefs.length - 1; i >= 0; i--) {
+      const { placeholder, replacement } = footnoteDefs[i];
+      const escapedPlaceholder = placeholder.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const beforeReplace = markdown;
+      markdown = markdown.replace(new RegExp(escapedPlaceholder, 'g'), replacement);
+      if (beforeReplace !== markdown) {
+        console.log(`Restored footnote definition: ${placeholder} -> ${replacement}`);
+      } else {
+        console.warn(`Failed to restore footnote definition placeholder: ${placeholder}`);
+      }
+    }
     
     // Clean up excessive whitespace while preserving paragraph breaks
     const finalMarkdown = markdown
@@ -239,11 +553,24 @@ async function htmlToMarkdown(html: string, markdownPath: string | null): Promis
       .replace(/[ \t]+$/gm, '') // Remove trailing spaces from lines
       .trim();
     
+    console.log('Conversion complete. Output length:', finalMarkdown.length);
+    console.log('First 500 chars of markdown:', finalMarkdown.substring(0, 500));
+    
+    // Validate that we actually got markdown, not HTML
+    if (finalMarkdown.includes('<html') || finalMarkdown.includes('<!DOCTYPE') || 
+        (finalMarkdown.includes('<p>') && !finalMarkdown.includes('[^'))) {
+      console.error('Conversion appears to have failed - output looks like HTML');
+      console.error('Output:', finalMarkdown.substring(0, 1000));
+      throw new Error('HTML to Markdown conversion failed - output is still HTML');
+    }
+    
     return finalMarkdown;
   } catch (error) {
     console.error('Error converting HTML to Markdown:', error);
-    console.error('HTML content:', html);
-    return html; // Return original HTML if conversion fails
+    console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+    console.error('HTML content (first 2000 chars):', html.substring(0, 2000));
+    // Don't return HTML - throw the error so the save fails rather than saving HTML
+    throw error;
   }
 }
 

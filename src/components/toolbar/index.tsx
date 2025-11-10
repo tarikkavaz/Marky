@@ -14,16 +14,29 @@ import {
   Table,
   Link,
   Code,
-  FileCode,
+  Braces,
   List,
   ListOrdered,
   Undo,
   Redo,
+  Indent,
+  Outdent,
+  CheckSquare,
+  Quote,
+  Info,
+  Lightbulb,
+  MessageSquareWarning,
+  AlertTriangle,
+  AlertCircle,
+  Footprints,
+  Minus,
 } from 'lucide-react';
 import { ToolbarButton } from './ToolbarButton';
 import { ToolbarGroup } from './ToolbarGroup';
 import { ToolbarInsert, type ToolbarInsertRef } from './ToolbarInsert';
+import { ToolbarDropdown } from './ToolbarDropdown';
 import { createFormattingCommands, createInsertionCommands } from '../editor/utils/commands';
+import { FootnoteDialog } from '../dialogs/FootnoteDialog';
 
 interface ToolbarProps {
   editor: Editor | null;
@@ -33,6 +46,7 @@ interface ToolbarProps {
 export function Toolbar({ editor }: ToolbarProps) {
   const [, setUpdateTrigger] = useState(0);
   const insertRef = useRef<ToolbarInsertRef>(null);
+  const [footnoteDialogOpen, setFootnoteDialogOpen] = useState(false);
 
   // Force toolbar to re-render when editor selection changes
   useEffect(() => {
@@ -118,50 +132,64 @@ export function Toolbar({ editor }: ToolbarProps) {
           title="Inline Code"
         />
         <ToolbarButton
-          icon={FileCode}
+          icon={Braces}
           onClick={formatting.toggleCodeBlock}
           isActive={formatting.isActive('codeBlock')}
-          title="Code Block"
+          title="Code Block (Cmd+Shift+C)"
         />
       </ToolbarGroup>
 
       {/* Headings */}
       <ToolbarGroup>
-        <ToolbarButton
+        <ToolbarDropdown
           icon={Heading1}
-          onClick={() => formatting.toggleHeading(1)}
-          isActive={formatting.isActive('heading', { level: 1 })}
-          title="Heading 1"
-        />
-        <ToolbarButton
-          icon={Heading2}
-          onClick={() => formatting.toggleHeading(2)}
-          isActive={formatting.isActive('heading', { level: 2 })}
-          title="Heading 2"
-        />
-        <ToolbarButton
-          icon={Heading3}
-          onClick={() => formatting.toggleHeading(3)}
-          isActive={formatting.isActive('heading', { level: 3 })}
-          title="Heading 3"
-        />
-        <ToolbarButton
-          icon={Heading4}
-          onClick={() => formatting.toggleHeading(4)}
-          isActive={formatting.isActive('heading', { level: 4 })}
-          title="Heading 4"
-        />
-        <ToolbarButton
-          icon={Heading5}
-          onClick={() => formatting.toggleHeading(5)}
-          isActive={formatting.isActive('heading', { level: 5 })}
-          title="Heading 5"
-        />
-        <ToolbarButton
-          icon={Heading6}
-          onClick={() => formatting.toggleHeading(6)}
-          isActive={formatting.isActive('heading', { level: 6 })}
-          title="Heading 6"
+          label="Headings"
+          isActive={
+            formatting.isActive('heading', { level: 1 }) ||
+            formatting.isActive('heading', { level: 2 }) ||
+            formatting.isActive('heading', { level: 3 }) ||
+            formatting.isActive('heading', { level: 4 }) ||
+            formatting.isActive('heading', { level: 5 }) ||
+            formatting.isActive('heading', { level: 6 })
+          }
+          items={[
+            {
+              label: 'Heading 1',
+              icon: Heading1,
+              onClick: () => formatting.toggleHeading(1),
+              isActive: formatting.isActive('heading', { level: 1 }),
+            },
+            {
+              label: 'Heading 2',
+              icon: Heading2,
+              onClick: () => formatting.toggleHeading(2),
+              isActive: formatting.isActive('heading', { level: 2 }),
+            },
+            {
+              label: 'Heading 3',
+              icon: Heading3,
+              onClick: () => formatting.toggleHeading(3),
+              isActive: formatting.isActive('heading', { level: 3 }),
+            },
+            {
+              label: 'Heading 4',
+              icon: Heading4,
+              onClick: () => formatting.toggleHeading(4),
+              isActive: formatting.isActive('heading', { level: 4 }),
+            },
+            {
+              label: 'Heading 5',
+              icon: Heading5,
+              onClick: () => formatting.toggleHeading(5),
+              isActive: formatting.isActive('heading', { level: 5 }),
+            },
+            {
+              label: 'Heading 6',
+              icon: Heading6,
+              onClick: () => formatting.toggleHeading(6),
+              isActive: formatting.isActive('heading', { level: 6 }),
+            },
+          ]}
         />
       </ToolbarGroup>
 
@@ -178,6 +206,95 @@ export function Toolbar({ editor }: ToolbarProps) {
           onClick={formatting.toggleOrderedList}
           isActive={formatting.isActive('orderedList')}
           title="Numbered List"
+        />
+        <ToolbarButton
+          icon={CheckSquare}
+          onClick={formatting.toggleTaskList}
+          isActive={formatting.isActive('taskList')}
+          title="Task List"
+        />
+      </ToolbarGroup>
+
+      {/* List Indentation */}
+      <ToolbarGroup>
+        <ToolbarDropdown
+          icon={Indent}
+          label="List Indentation"
+          items={[
+            {
+              label: 'Indent',
+              icon: Indent,
+              onClick: formatting.indentList,
+              shortcut: 'Tab',
+            },
+            {
+              label: 'Outdent',
+              icon: Outdent,
+              onClick: formatting.outdentList,
+              shortcut: 'Shift+Tab',
+            },
+          ]}
+        />
+      </ToolbarGroup>
+
+      {/* Quotes */}
+      <ToolbarGroup>
+        <ToolbarButton
+          icon={Quote}
+          onClick={formatting.toggleBlockquote}
+          isActive={formatting.isActive('blockquote')}
+          title="Quote"
+        />
+      </ToolbarGroup>
+
+      {/* Alerts */}
+      <ToolbarGroup>
+        <ToolbarDropdown
+          icon={Info}
+          label="Alerts"
+          items={[
+            {
+              label: 'Note Block',
+              icon: Info,
+              onClick: () => formatting.insertAlert('note'),
+            },
+            {
+              label: 'Tip Block',
+              icon: Lightbulb,
+              onClick: () => formatting.insertAlert('tip'),
+            },
+            {
+              label: 'Important Block',
+              icon: MessageSquareWarning,
+              onClick: () => formatting.insertAlert('important'),
+            },
+            {
+              label: 'Warning Block',
+              icon: AlertTriangle,
+              onClick: () => formatting.insertAlert('warning'),
+            },
+            {
+              label: 'Caution Block',
+              icon: AlertCircle,
+              onClick: () => formatting.insertAlert('caution'),
+            },
+          ]}
+        />
+      </ToolbarGroup>
+
+      {/* Footnotes & Horizontal Line */}
+      <ToolbarGroup>
+        <ToolbarButton
+          icon={Footprints}
+          onClick={() => {
+            setFootnoteDialogOpen(true);
+          }}
+          title="Insert Footnote"
+        />
+        <ToolbarButton
+          icon={Minus}
+          onClick={formatting.insertHorizontalRule}
+          title="Insert Horizontal Line"
         />
       </ToolbarGroup>
 
@@ -202,6 +319,27 @@ export function Toolbar({ editor }: ToolbarProps) {
 
       {/* Dialogs */}
       <ToolbarInsert ref={insertRef} editor={editor} />
+      <FootnoteDialog
+        open={footnoteDialogOpen}
+        onOpenChange={setFootnoteDialogOpen}
+        defaultId={(() => {
+          if (!editor) return '1';
+          const { state } = editor;
+          let footnoteCount = 1;
+          state.doc.descendants((node) => {
+            if (node.type.name === 'footnoteReference') {
+              const nodeId = parseInt(node.attrs.id) || 0;
+              if (nodeId >= footnoteCount) {
+                footnoteCount = nodeId + 1;
+              }
+            }
+          });
+          return footnoteCount.toString();
+        })()}
+        onSubmit={(id, content) => {
+          formatting.insertFootnoteWithData(id, content);
+        }}
+      />
     </div>
   );
 }

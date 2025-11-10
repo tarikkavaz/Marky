@@ -44,6 +44,9 @@ importers:
       '@tiptap/extension-document':
         specifier: ^3.10.3
         version: 3.10.3(@tiptap/core@3.10.3(@tiptap/pm@3.10.3))
+      '@tiptap/extension-horizontal-rule':
+        specifier: ^3.10.4
+        version: 3.10.4(@tiptap/core@3.10.3(@tiptap/pm@3.10.3))(@tiptap/pm@3.10.3)
       '@tiptap/extension-image':
         specifier: ^3.10.3
         version: 3.10.3(@tiptap/core@3.10.3(@tiptap/pm@3.10.3))
@@ -65,6 +68,12 @@ importers:
       '@tiptap/extension-table-row':
         specifier: ^3.10.3
         version: 3.10.3(@tiptap/extension-table@3.10.3(@tiptap/core@3.10.3(@tiptap/pm@3.10.3))(@tiptap/pm@3.10.3))
+      '@tiptap/extension-task-item':
+        specifier: ^3.10.4
+        version: 3.10.4(@tiptap/extension-list@3.10.3(@tiptap/core@3.10.3(@tiptap/pm@3.10.3))(@tiptap/pm@3.10.3))
+      '@tiptap/extension-task-list':
+        specifier: ^3.10.4
+        version: 3.10.4(@tiptap/extension-list@3.10.3(@tiptap/core@3.10.3(@tiptap/pm@3.10.3))(@tiptap/pm@3.10.3))
       '@tiptap/extension-typography':
         specifier: ^3.10.3
         version: 3.10.3(@tiptap/core@3.10.3(@tiptap/pm@3.10.3))
@@ -1219,11 +1228,11 @@ packages:
     peerDependencies:
       '@tiptap/core': ^3.10.3
 
-  '@tiptap/extension-horizontal-rule@3.10.3':
-    resolution: {integrity: sha512-n9N7A+6NKpw9qnPrLeHCgct8aoHVKmGrMOCdEN81nMtplVkWTvUy5MTotkx2Bj+AGwFI00ODkoYxWSa5ejLzLA==}
+  '@tiptap/extension-horizontal-rule@3.10.4':
+    resolution: {integrity: sha512-AaO+teMVWHec3XRaC5Jj5iZzMjas+bx+MHPfXTw0KIcn+4wlHV/0bkcWH31E+fbSswH4MnVFET6RmTkzXpEGhw==}
     peerDependencies:
-      '@tiptap/core': ^3.10.3
-      '@tiptap/pm': ^3.10.3
+      '@tiptap/core': ^3.10.4
+      '@tiptap/pm': ^3.10.4
 
   '@tiptap/extension-image@3.10.3':
     resolution: {integrity: sha512-mZsz+pusSlRg6474YjEilA4U/Zfput2FCuDz/kut2H0Io7eOUAk6lqGX8t1GcO5WBSq1PgCoMNRbne1i6MHzaw==}
@@ -1297,6 +1306,16 @@ packages:
     peerDependencies:
       '@tiptap/core': ^3.10.3
       '@tiptap/pm': ^3.10.3
+
+  '@tiptap/extension-task-item@3.10.4':
+    resolution: {integrity: sha512-zwjy4An6hpmLwxMt/m8SXObKvlF5Vj9l97tTbE2wNkS+WY9jljXpSWBTAblmvEHGYuUJZ4S1QjcIJ1MEJHwd0Q==}
+    peerDependencies:
+      '@tiptap/extension-list': ^3.10.4
+
+  '@tiptap/extension-task-list@3.10.4':
+    resolution: {integrity: sha512-ZMHl4VcHRtrVnfqRx5j+N7y0Q8atp+LMO2gTAZkOu7UzXaW9RJNcc5tOsIBa6BWGqp5pJBjT/eBIYWTjpn3eZg==}
+    peerDependencies:
+      '@tiptap/extension-list': ^3.10.4
 
   '@tiptap/extension-text@3.10.3':
     resolution: {integrity: sha512-xhCWXby4F/3jkDmdBvEI1uoz2XQIIVnWYYEwJKICQC33Q5dQ/tGIYLEhGqVbllvcELaz1hYGlKBW0A9JyPce/A==}
@@ -3316,7 +3335,7 @@ snapshots:
     dependencies:
       '@tiptap/core': 3.10.3(@tiptap/pm@3.10.3)
 
-  '@tiptap/extension-horizontal-rule@3.10.3(@tiptap/core@3.10.3(@tiptap/pm@3.10.3))(@tiptap/pm@3.10.3)':
+  '@tiptap/extension-horizontal-rule@3.10.4(@tiptap/core@3.10.3(@tiptap/pm@3.10.3))(@tiptap/pm@3.10.3)':
     dependencies:
       '@tiptap/core': 3.10.3(@tiptap/pm@3.10.3)
       '@tiptap/pm': 3.10.3
@@ -3380,6 +3399,14 @@ snapshots:
     dependencies:
       '@tiptap/core': 3.10.3(@tiptap/pm@3.10.3)
       '@tiptap/pm': 3.10.3
+
+  '@tiptap/extension-task-item@3.10.4(@tiptap/extension-list@3.10.3(@tiptap/core@3.10.3(@tiptap/pm@3.10.3))(@tiptap/pm@3.10.3))':
+    dependencies:
+      '@tiptap/extension-list': 3.10.3(@tiptap/core@3.10.3(@tiptap/pm@3.10.3))(@tiptap/pm@3.10.3)
+
+  '@tiptap/extension-task-list@3.10.4(@tiptap/extension-list@3.10.3(@tiptap/core@3.10.3(@tiptap/pm@3.10.3))(@tiptap/pm@3.10.3))':
+    dependencies:
+      '@tiptap/extension-list': 3.10.3(@tiptap/core@3.10.3(@tiptap/pm@3.10.3))(@tiptap/pm@3.10.3)
 
   '@tiptap/extension-text@3.10.3(@tiptap/core@3.10.3(@tiptap/pm@3.10.3))':
     dependencies:
@@ -3449,7 +3476,7 @@ snapshots:
       '@tiptap/extension-gapcursor': 3.10.3(@tiptap/extensions@3.10.3(@tiptap/core@3.10.3(@tiptap/pm@3.10.3))(@tiptap/pm@3.10.3))
       '@tiptap/extension-hard-break': 3.10.3(@tiptap/core@3.10.3(@tiptap/pm@3.10.3))
       '@tiptap/extension-heading': 3.10.3(@tiptap/core@3.10.3(@tiptap/pm@3.10.3))
-      '@tiptap/extension-horizontal-rule': 3.10.3(@tiptap/core@3.10.3(@tiptap/pm@3.10.3))(@tiptap/pm@3.10.3)
+      '@tiptap/extension-horizontal-rule': 3.10.4(@tiptap/core@3.10.3(@tiptap/pm@3.10.3))(@tiptap/pm@3.10.3)
       '@tiptap/extension-italic': 3.10.3(@tiptap/core@3.10.3(@tiptap/pm@3.10.3))
       '@tiptap/extension-link': 3.10.3(@tiptap/core@3.10.3(@tiptap/pm@3.10.3))(@tiptap/pm@3.10.3)
       '@tiptap/extension-list': 3.10.3(@tiptap/core@3.10.3(@tiptap/pm@3.10.3))(@tiptap/pm@3.10.3)

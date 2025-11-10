@@ -6,6 +6,9 @@ import {
   ContextMenuSeparator,
   ContextMenuTrigger,
   ContextMenuShortcut,
+  ContextMenuSub,
+  ContextMenuSubContent,
+  ContextMenuSubTrigger,
 } from '../ui/context-menu';
 import { 
   Image, 
@@ -17,6 +20,7 @@ import {
   Italic,
   Underline as UnderlineIcon,
   Code as CodeIcon,
+  Braces,
   Heading1,
   Heading2,
   Heading3,
@@ -27,10 +31,22 @@ import {
   ListOrdered,
   Undo,
   Redo,
+  Indent,
+  Outdent,
+  CheckSquare,
+  Quote,
+  Info,
+  Lightbulb,
+  MessageSquareWarning,
+  AlertTriangle,
+  AlertCircle,
+  Footprints,
+  Minus,
 } from 'lucide-react';
 import { useState, useEffect, useCallback } from 'react';
 import type { ReactNode } from 'react';
 import { InputDialog } from '../dialogs/InputDialog';
+import { FootnoteDialog } from '../dialogs/FootnoteDialog';
 import { createFormattingCommands, createInsertionCommands } from './utils/commands';
 
 interface EditorContextMenuProps {
@@ -51,6 +67,7 @@ export function EditorContextMenu({
   const [tableRowsDialogOpen, setTableRowsDialogOpen] = useState(false);
   const [tableColsDialogOpen, setTableColsDialogOpen] = useState(false);
   const [pendingTableRows, setPendingTableRows] = useState<number>(3);
+  const [footnoteDialogOpen, setFootnoteDialogOpen] = useState(false);
   const [, setUpdateTrigger] = useState(0);
 
   const insertImage = useCallback(async () => {
@@ -190,73 +207,163 @@ export function EditorContextMenu({
           <span className={formatting.isActive('code') ? 'font-bold' : ''}>Code</span>
           <ContextMenuShortcut>⌘E</ContextMenuShortcut>
         </ContextMenuItem>
-        
-        <ContextMenuSeparator />
-        
-        {/* Headings */}
-        <ContextMenuItem onSelect={() => formatting.toggleHeading(1)}>
-          <Heading1 className="mr-2 h-4 w-4" />
-          <span className={formatting.isActive('heading', { level: 1 }) ? 'font-bold' : ''}>Heading 1</span>
-          <ContextMenuShortcut>⌥⌘1</ContextMenuShortcut>
-        </ContextMenuItem>
-        <ContextMenuItem onSelect={() => formatting.toggleHeading(2)}>
-          <Heading2 className="mr-2 h-4 w-4" />
-          <span className={formatting.isActive('heading', { level: 2 }) ? 'font-bold' : ''}>Heading 2</span>
-          <ContextMenuShortcut>⌥⌘2</ContextMenuShortcut>
-        </ContextMenuItem>
-        <ContextMenuItem onSelect={() => formatting.toggleHeading(3)}>
-          <Heading3 className="mr-2 h-4 w-4" />
-          <span className={formatting.isActive('heading', { level: 3 }) ? 'font-bold' : ''}>Heading 3</span>
-          <ContextMenuShortcut>⌥⌘3</ContextMenuShortcut>
-        </ContextMenuItem>
-        <ContextMenuItem onSelect={() => formatting.toggleHeading(4)}>
-          <Heading4 className="mr-2 h-4 w-4" />
-          <span className={formatting.isActive('heading', { level: 4 }) ? 'font-bold' : ''}>Heading 4</span>
-          <ContextMenuShortcut>⌥⌘4</ContextMenuShortcut>
-        </ContextMenuItem>
-        <ContextMenuItem onSelect={() => formatting.toggleHeading(5)}>
-          <Heading5 className="mr-2 h-4 w-4" />
-          <span className={formatting.isActive('heading', { level: 5 }) ? 'font-bold' : ''}>Heading 5</span>
-          <ContextMenuShortcut>⌥⌘5</ContextMenuShortcut>
-        </ContextMenuItem>
-        <ContextMenuItem onSelect={() => formatting.toggleHeading(6)}>
-          <Heading6 className="mr-2 h-4 w-4" />
-          <span className={formatting.isActive('heading', { level: 6 }) ? 'font-bold' : ''}>Heading 6</span>
-          <ContextMenuShortcut>⌥⌘6</ContextMenuShortcut>
+        <ContextMenuItem onSelect={formatting.toggleCodeBlock}>
+          <Braces className="mr-2 h-4 w-4" />
+          <span className={formatting.isActive('codeBlock') ? 'font-bold' : ''}>Code Block</span>
+          <ContextMenuShortcut>⇧⌘C</ContextMenuShortcut>
         </ContextMenuItem>
         
         <ContextMenuSeparator />
         
-        {/* Lists */}
-        <ContextMenuItem onSelect={formatting.toggleBulletList}>
-          <List className="mr-2 h-4 w-4" />
-          <span className={formatting.isActive('bulletList') ? 'font-bold' : ''}>Bullet List</span>
-          <ContextMenuShortcut>⇧⌘8</ContextMenuShortcut>
+        {/* Headings - Submenu */}
+        <ContextMenuSub>
+          <ContextMenuSubTrigger>
+            <Heading1 className="mr-2 h-4 w-4" />
+            Headings
+          </ContextMenuSubTrigger>
+          <ContextMenuSubContent>
+            <ContextMenuItem onSelect={() => formatting.toggleHeading(1)}>
+              <Heading1 className="mr-2 h-4 w-4" />
+              <span className={formatting.isActive('heading', { level: 1 }) ? 'font-bold' : ''}>Heading 1</span>
+              <ContextMenuShortcut>⌥⌘1</ContextMenuShortcut>
+            </ContextMenuItem>
+            <ContextMenuItem onSelect={() => formatting.toggleHeading(2)}>
+              <Heading2 className="mr-2 h-4 w-4" />
+              <span className={formatting.isActive('heading', { level: 2 }) ? 'font-bold' : ''}>Heading 2</span>
+              <ContextMenuShortcut>⌥⌘2</ContextMenuShortcut>
+            </ContextMenuItem>
+            <ContextMenuItem onSelect={() => formatting.toggleHeading(3)}>
+              <Heading3 className="mr-2 h-4 w-4" />
+              <span className={formatting.isActive('heading', { level: 3 }) ? 'font-bold' : ''}>Heading 3</span>
+              <ContextMenuShortcut>⌥⌘3</ContextMenuShortcut>
+            </ContextMenuItem>
+            <ContextMenuItem onSelect={() => formatting.toggleHeading(4)}>
+              <Heading4 className="mr-2 h-4 w-4" />
+              <span className={formatting.isActive('heading', { level: 4 }) ? 'font-bold' : ''}>Heading 4</span>
+              <ContextMenuShortcut>⌥⌘4</ContextMenuShortcut>
+            </ContextMenuItem>
+            <ContextMenuItem onSelect={() => formatting.toggleHeading(5)}>
+              <Heading5 className="mr-2 h-4 w-4" />
+              <span className={formatting.isActive('heading', { level: 5 }) ? 'font-bold' : ''}>Heading 5</span>
+              <ContextMenuShortcut>⌥⌘5</ContextMenuShortcut>
+            </ContextMenuItem>
+            <ContextMenuItem onSelect={() => formatting.toggleHeading(6)}>
+              <Heading6 className="mr-2 h-4 w-4" />
+              <span className={formatting.isActive('heading', { level: 6 }) ? 'font-bold' : ''}>Heading 6</span>
+              <ContextMenuShortcut>⌥⌘6</ContextMenuShortcut>
+            </ContextMenuItem>
+          </ContextMenuSubContent>
+        </ContextMenuSub>
+        
+        {/* Lists - Submenu */}
+        <ContextMenuSub>
+          <ContextMenuSubTrigger>
+            <List className="mr-2 h-4 w-4" />
+            Lists
+          </ContextMenuSubTrigger>
+          <ContextMenuSubContent>
+            <ContextMenuItem onSelect={formatting.toggleBulletList}>
+              <List className="mr-2 h-4 w-4" />
+              <span className={formatting.isActive('bulletList') ? 'font-bold' : ''}>Bullet List</span>
+              <ContextMenuShortcut>⇧⌘8</ContextMenuShortcut>
+            </ContextMenuItem>
+            <ContextMenuItem onSelect={formatting.toggleOrderedList}>
+              <ListOrdered className="mr-2 h-4 w-4" />
+              <span className={formatting.isActive('orderedList') ? 'font-bold' : ''}>Numbered List</span>
+              <ContextMenuShortcut>⇧⌘7</ContextMenuShortcut>
+            </ContextMenuItem>
+            <ContextMenuItem onSelect={formatting.toggleTaskList}>
+              <CheckSquare className="mr-2 h-4 w-4" />
+              <span className={formatting.isActive('taskList') ? 'font-bold' : ''}>Task List</span>
+            </ContextMenuItem>
+            <ContextMenuSeparator />
+            <ContextMenuItem onSelect={formatting.indentList}>
+              <Indent className="mr-2 h-4 w-4" />
+              Indent
+              <ContextMenuShortcut>Tab</ContextMenuShortcut>
+            </ContextMenuItem>
+            <ContextMenuItem onSelect={formatting.outdentList}>
+              <Outdent className="mr-2 h-4 w-4" />
+              Outdent
+              <ContextMenuShortcut>⇧Tab</ContextMenuShortcut>
+            </ContextMenuItem>
+          </ContextMenuSubContent>
+        </ContextMenuSub>
+        
+        {/* Block Elements */}
+        <ContextMenuItem onSelect={formatting.toggleBlockquote}>
+          <Quote className="mr-2 h-4 w-4" />
+          <span className={formatting.isActive('blockquote') ? 'font-bold' : ''}>Quote</span>
         </ContextMenuItem>
-        <ContextMenuItem onSelect={formatting.toggleOrderedList}>
-          <ListOrdered className="mr-2 h-4 w-4" />
-          <span className={formatting.isActive('orderedList') ? 'font-bold' : ''}>Numbered List</span>
-          <ContextMenuShortcut>⇧⌘7</ContextMenuShortcut>
+        
+        {/* Alerts - Submenu */}
+        <ContextMenuSub>
+          <ContextMenuSubTrigger>
+            <Info className="mr-2 h-4 w-4" />
+            Alerts
+          </ContextMenuSubTrigger>
+          <ContextMenuSubContent>
+            <ContextMenuItem onSelect={() => formatting.insertAlert('note')}>
+              <Info className="mr-2 h-4 w-4" />
+              Note Block
+            </ContextMenuItem>
+            <ContextMenuItem onSelect={() => formatting.insertAlert('tip')}>
+              <Lightbulb className="mr-2 h-4 w-4" />
+              Tip Block
+            </ContextMenuItem>
+            <ContextMenuItem onSelect={() => formatting.insertAlert('important')}>
+              <MessageSquareWarning className="mr-2 h-4 w-4" />
+              Important Block
+            </ContextMenuItem>
+            <ContextMenuItem onSelect={() => formatting.insertAlert('warning')}>
+              <AlertTriangle className="mr-2 h-4 w-4" />
+              Warning Block
+            </ContextMenuItem>
+            <ContextMenuItem onSelect={() => formatting.insertAlert('caution')}>
+              <AlertCircle className="mr-2 h-4 w-4" />
+              Caution Block
+            </ContextMenuItem>
+          </ContextMenuSubContent>
+        </ContextMenuSub>
+        
+        {/* Footnotes & Horizontal Line */}
+        <ContextMenuItem onSelect={() => {
+          setFootnoteDialogOpen(true);
+        }}>
+          <Footprints className="mr-2 h-4 w-4" />
+          Insert Footnote
+        </ContextMenuItem>
+        <ContextMenuItem onSelect={formatting.insertHorizontalRule}>
+          <Minus className="mr-2 h-4 w-4" />
+          Insert Horizontal Line
         </ContextMenuItem>
         
         <ContextMenuSeparator />
         
-        {/* Insert Options */}
-        <ContextMenuItem onSelect={insertImage}>
-          <Image className="mr-2 h-4 w-4" />
-          Insert Image
-          <ContextMenuShortcut>⇧⌘I</ContextMenuShortcut>
-        </ContextMenuItem>
-        <ContextMenuItem onSelect={insertTable}>
-          <Table className="mr-2 h-4 w-4" />
-          Insert Table
-          <ContextMenuShortcut>⌘T</ContextMenuShortcut>
-        </ContextMenuItem>
-        <ContextMenuItem onSelect={insertLink}>
-          <Link className="mr-2 h-4 w-4" />
-          Insert Link
-          <ContextMenuShortcut>⌘K</ContextMenuShortcut>
-        </ContextMenuItem>
+        {/* Insert Options - Submenu */}
+        <ContextMenuSub>
+          <ContextMenuSubTrigger>
+            <Image className="mr-2 h-4 w-4" />
+            Insert
+          </ContextMenuSubTrigger>
+          <ContextMenuSubContent>
+            <ContextMenuItem onSelect={insertImage}>
+              <Image className="mr-2 h-4 w-4" />
+              Insert Image
+              <ContextMenuShortcut>⇧⌘I</ContextMenuShortcut>
+            </ContextMenuItem>
+            <ContextMenuItem onSelect={insertTable}>
+              <Table className="mr-2 h-4 w-4" />
+              Insert Table
+              <ContextMenuShortcut>⌘T</ContextMenuShortcut>
+            </ContextMenuItem>
+            <ContextMenuItem onSelect={insertLink}>
+              <Link className="mr-2 h-4 w-4" />
+              Insert Link
+              <ContextMenuShortcut>⌘K</ContextMenuShortcut>
+            </ContextMenuItem>
+          </ContextMenuSubContent>
+        </ContextMenuSub>
         
         <ContextMenuSeparator />
         
@@ -298,6 +405,27 @@ export function EditorContextMenu({
         placeholder="3"
         defaultValue="3"
         onSubmit={handleTableColsSubmit}
+      />
+      <FootnoteDialog
+        open={footnoteDialogOpen}
+        onOpenChange={setFootnoteDialogOpen}
+        defaultId={(() => {
+          if (!editor) return '1';
+          const { state } = editor;
+          let footnoteCount = 1;
+          state.doc.descendants((node) => {
+            if (node.type.name === 'footnoteReference') {
+              const nodeId = parseInt(node.attrs.id) || 0;
+              if (nodeId >= footnoteCount) {
+                footnoteCount = nodeId + 1;
+              }
+            }
+          });
+          return footnoteCount.toString();
+        })()}
+        onSubmit={(id, content) => {
+          formatting.insertFootnoteWithData(id, content);
+        }}
       />
     </ContextMenu>
   );
